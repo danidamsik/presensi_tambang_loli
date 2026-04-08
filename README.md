@@ -7,6 +7,34 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Forgot Password (Mailtrap)
+
+Fitur forgot password sudah aktif via route bawaan Laravel:
+
+- `GET /forgot-password`
+- `POST /forgot-password`
+- `GET /reset-password/{token}`
+- `POST /reset-password`
+
+Konfigurasi SMTP untuk Mailtrap ada di `.env`:
+
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=sandbox.smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=your_mailtrap_username
+MAIL_PASSWORD=your_mailtrap_password
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS="noreply@presensi-tambang-loli.test"
+```
+
+Langkah pakai:
+
+1. Isi `MAIL_USERNAME` dan `MAIL_PASSWORD` dari akun Mailtrap.
+2. Jalankan `php artisan config:clear`.
+3. Buka halaman login lalu klik **Forgot your password?**.
+4. Masukkan email user yang terdaftar, cek inbox di Mailtrap, lalu buka link reset.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
