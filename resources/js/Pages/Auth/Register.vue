@@ -7,7 +7,8 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const form = useForm({
-    name: '',
+    id_number: '',
+    full_name: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -26,19 +27,34 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="name" value="Name" />
+                <InputLabel for="id_number" value="ID Number (NIK)" />
 
                 <TextInput
-                    id="name"
+                    id="id_number"
                     type="text"
                     class="mt-1 block w-full"
-                    v-model="form.name"
+                    v-model="form.id_number"
                     required
                     autofocus
+                    autocomplete="id_number"
+                />
+
+                <InputError class="mt-2" :message="form.errors.id_number" />
+            </div>
+
+            <div class="mt-4">
+                <InputLabel for="full_name" value="Full Name" />
+
+                <TextInput
+                    id="full_name"
+                    type="text"
+                    class="mt-1 block w-full"
+                    v-model="form.full_name"
+                    required
                     autocomplete="name"
                 />
 
-                <InputError class="mt-2" :message="form.errors.name" />
+                <InputError class="mt-2" :message="form.errors.full_name" />
             </div>
 
             <div class="mt-4">
@@ -89,7 +105,7 @@ const submit = () => {
             <div class="flex items-center justify-end mt-4">
                 <Link
                     :href="route('login')"
-                    class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    class="underline text-sm text-slate-600 hover:text-amber-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
                 >
                     Already registered?
                 </Link>
