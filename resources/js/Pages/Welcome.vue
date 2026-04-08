@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
 
 defineProps({
     canLogin: {
@@ -23,25 +24,29 @@ defineProps({
 <template>
     <Head title="Sistem Presensi" />
 
-    <div class="min-h-screen relative overflow-hidden bg-slate-50 text-slate-900 flex flex-col items-center justify-center">
+    <div class="min-h-screen relative overflow-hidden bg-slate-50 text-slate-900 flex flex-col items-center justify-center transition-colors dark:bg-slate-950 dark:text-slate-100">
+        <div class="absolute top-4 right-4 z-20">
+            <ThemeToggle compact />
+        </div>
+
         <!-- Background Ornaments -->
         <div class="absolute inset-0 z-0 pointer-events-none">
             <div class="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-amber-300/30 blur-[150px]"></div>
-            <div class="absolute bottom-[-10%] right-[-10%] w-[800px] h-[800px] rounded-full bg-orange-200/30 blur-[180px]"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[800px] h-[800px] rounded-full bg-orange-200/30 blur-[180px] dark:bg-orange-500/20"></div>
         </div>
 
         <div class="z-10 w-full max-w-5xl mx-auto px-6 text-center">
             
             <div class="flex justify-center mb-10 transform hover:scale-105 transition-transform duration-500">
-                <ApplicationLogo class="text-slate-900 drop-shadow-sm" />
+                <ApplicationLogo class="text-slate-900 drop-shadow-sm dark:text-slate-100" />
             </div>
 
-            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-br from-slate-900 to-slate-600">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-br from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400">
                 Presensi Digital <br/>
                 <span class="text-amber-600 bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">Terintegrasi</span>
             </h1>
 
-            <p class="mt-4 text-xl md:text-2xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-12">
+            <p class="mt-4 text-xl md:text-2xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-12 dark:text-slate-300">
                 Sistem cerdas pencatatan kehadiran dan lembur untuk ekosistem kerja Tambang Loli yang cepat, presisi, dan transparan.
             </p>
 
@@ -65,7 +70,7 @@ defineProps({
                     <Link
                         v-if="canRegister"
                         :href="route('register')"
-                        class="px-8 py-4 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl font-bold text-slate-700 uppercase tracking-widest hover:bg-slate-50 transition-all duration-300 shadow-md transform hover:-translate-y-1"
+                        class="px-8 py-4 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl font-bold text-slate-700 uppercase tracking-widest hover:bg-slate-50 transition-all duration-300 shadow-md transform hover:-translate-y-1 dark:bg-slate-900/80 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
                     >
                         Daftar Baru
                     </Link>
@@ -73,7 +78,7 @@ defineProps({
             </div>
         </div>
 
-        <div class="absolute bottom-4 text-center text-sm text-slate-500 z-10 w-full">
+        <div class="absolute bottom-4 text-center text-sm text-slate-500 z-10 w-full dark:text-slate-400">
             Laravel v{{ laravelVersion }} (PHP v{{ phpVersion }}) 
         </div>
     </div>

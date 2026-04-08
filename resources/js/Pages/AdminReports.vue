@@ -1,0 +1,286 @@
+<script setup>
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { Head, router } from '@inertiajs/vue3';
+import { reactive } from 'vue';
+
+const props = defineProps({
+    filters: {
+        type: Object,
+        required: true,
+    },
+    employees: {
+        type: Array,
+        required: true,
+    },
+    summary: {
+        type: Object,
+        required: true,
+    },
+    attendanceByEmployee: {
+        type: Array,
+        required: true,
+    },
+    overtimeByEmployee: {
+        type: Array,
+        required: true,
+    },
+    attendanceDetails: {
+        type: Array,
+        required: true,
+    },
+    overtimeDetails: {
+        type: Array,
+        required: true,
+    },
+});
+
+const form = reactive({
+    date_from: props.filters.date_from,
+    date_to: props.filters.date_to,
+    employee_id: props.filters.employee_id ?? '',
+});
+
+const formatDate = (value) => {
+    if (!value) return '-';
+
+    const [year, month, day] = value.split('-').map(Number);
+
+    if (!year || !month || !day) {
+        return value;
+    }
+
+    return new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    }).format(new Date(year, month - 1, day));
+};
+
+const formatTime = (value) => {
+    if (!value) return '-';
+
+    return value.slice(0, 5);
+};
+
+const applyFilter = () => {
+    router.get(route('admin.reports.index'), {
+        date_from: form.date_from,
+        date_to: form.date_to,
+        employee_id: form.employee_id || null,
+    }, {
+        preserveState: true,
+        replace: true,
+    });
+};
+
+const resetFilter = () => {
+    form.employee_id = '';
+    applyFilter();
+};
+</script>
+
+<template>
+    <Head title="Laporan Lengkap" />
+
+    <AuthenticatedLayout>
+        <template #header>
+            <div class="space-y-1">
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Laporan Lengkap</h2>
+                <p class="text-sm text-gray-500">Ringkasan performa presensi dan lembur dengan export CSV.</p>
+            </div>
+        </template>
+
+        <div class="py-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+                <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500">Dari Tanggal</label>
+                            <input v-model="form.date_from" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500">Sampai Tanggal</label>
+                            <input v-model="form.date_to" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500">Karyawan</label>
+                            <select v-model="form.employee_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                                <option value="">Semua Karyawan</option>
+                                <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                                    {{ employee.full_name }} ({{ employee.id_number }})
+                                </option>
+                            </select>
+                        </div>
+                        <div class="flex items-end gap-2 md:col-span-2">
+                            <button type="button" class="rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800" @click="applyFilter">
+                                Terapkan Filter
+                            </button>
+                            <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50" @click="resetFilter">
+                                Reset
+                            </button>
+                            <a
+                                :href="route('admin.reports.attendance.csv', { date_from: form.date_from, date_to: form.date_to, employee_id: form.employee_id || null })"
+                                class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                            >
+                                Export Presensi CSV
+                            </a>
+                            <a
+                                :href="route('admin.reports.overtime.csv', { date_from: form.date_from, date_to: form.date_to, employee_id: form.employee_id || null })"
+                                class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-100"
+                            >
+                                Export Lembur CSV
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                        <p class="text-xs text-gray-500">Total Karyawan</p>
+                        <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.totalEmployees }}</p>
+                    </div>
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                        <p class="text-xs text-gray-500">Record Presensi</p>
+                        <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.attendanceRecords }}</p>
+                    </div>
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                        <p class="text-xs text-gray-500">Karyawan Hadir</p>
+                        <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.attendanceEmployees }}</p>
+                    </div>
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                        <p class="text-xs text-gray-500">Presensi Terlambat</p>
+                        <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.lateAttendance }}</p>
+                    </div>
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                        <p class="text-xs text-gray-500">Jam Lembur Approved</p>
+                        <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.approvedHours }} jam</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+                        <h3 class="text-lg font-semibold text-gray-900">Rekap Presensi per Karyawan</h3>
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="text-left text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th class="py-2 pe-4 font-medium">Karyawan</th>
+                                        <th class="py-2 pe-4 font-medium">Hari Hadir</th>
+                                        <th class="py-2 pe-4 font-medium">Selesai</th>
+                                        <th class="py-2 pe-4 font-medium">Rentang</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-gray-700">
+                                    <tr v-for="(row, index) in attendanceByEmployee" :key="index">
+                                        <td class="py-3 pe-4">
+                                            <p class="font-medium text-gray-900">{{ row.employee_name }}</p>
+                                            <p class="text-xs text-gray-500">{{ row.id_number ?? '-' }}</p>
+                                        </td>
+                                        <td class="py-3 pe-4">{{ row.attendance_days }}</td>
+                                        <td class="py-3 pe-4">{{ row.completed_days }}</td>
+                                        <td class="py-3 pe-4 text-xs">
+                                            {{ formatDate(row.first_attendance) }} - {{ formatDate(row.last_attendance) }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="attendanceByEmployee.length === 0">
+                                        <td colspan="4" class="py-4 text-center text-gray-500">Tidak ada data.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+                        <h3 class="text-lg font-semibold text-gray-900">Rekap Lembur per Karyawan</h3>
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="text-left text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th class="py-2 pe-4 font-medium">Karyawan</th>
+                                        <th class="py-2 pe-4 font-medium">Total</th>
+                                        <th class="py-2 pe-4 font-medium">Pending</th>
+                                        <th class="py-2 pe-4 font-medium">Approved</th>
+                                        <th class="py-2 pe-4 font-medium">Jam</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-gray-700">
+                                    <tr v-for="(row, index) in overtimeByEmployee" :key="index">
+                                        <td class="py-3 pe-4">
+                                            <p class="font-medium text-gray-900">{{ row.employee_name }}</p>
+                                            <p class="text-xs text-gray-500">{{ row.id_number ?? '-' }}</p>
+                                        </td>
+                                        <td class="py-3 pe-4">{{ row.total_requests }}</td>
+                                        <td class="py-3 pe-4">{{ row.pending }}</td>
+                                        <td class="py-3 pe-4">{{ row.approved }}</td>
+                                        <td class="py-3 pe-4">{{ row.approved_hours }} jam</td>
+                                    </tr>
+                                    <tr v-if="overtimeByEmployee.length === 0">
+                                        <td colspan="5" class="py-4 text-center text-gray-500">Tidak ada data.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+                        <h3 class="text-lg font-semibold text-gray-900">Detail Presensi (100 terbaru)</h3>
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="text-left text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th class="py-2 pe-4 font-medium">Tanggal</th>
+                                        <th class="py-2 pe-4 font-medium">Karyawan</th>
+                                        <th class="py-2 pe-4 font-medium">In</th>
+                                        <th class="py-2 pe-4 font-medium">Out</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-gray-700">
+                                    <tr v-for="(row, index) in attendanceDetails" :key="index">
+                                        <td class="py-3 pe-4">{{ formatDate(row.date) }}</td>
+                                        <td class="py-3 pe-4">{{ row.employee_name }}</td>
+                                        <td class="py-3 pe-4">{{ formatTime(row.clock_in_at) }}</td>
+                                        <td class="py-3 pe-4">{{ formatTime(row.clock_out_at) }}</td>
+                                    </tr>
+                                    <tr v-if="attendanceDetails.length === 0">
+                                        <td colspan="4" class="py-4 text-center text-gray-500">Tidak ada data.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+                        <h3 class="text-lg font-semibold text-gray-900">Detail Lembur (100 terbaru)</h3>
+                        <div class="mt-4 overflow-x-auto">
+                            <table class="min-w-full text-sm">
+                                <thead class="text-left text-gray-500 border-b border-gray-100">
+                                    <tr>
+                                        <th class="py-2 pe-4 font-medium">Tanggal</th>
+                                        <th class="py-2 pe-4 font-medium">Karyawan</th>
+                                        <th class="py-2 pe-4 font-medium">Status</th>
+                                        <th class="py-2 pe-4 font-medium">Jam</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 text-gray-700">
+                                    <tr v-for="(row, index) in overtimeDetails" :key="index">
+                                        <td class="py-3 pe-4">{{ formatDate(row.overtime_date) }}</td>
+                                        <td class="py-3 pe-4">{{ row.employee_name }}</td>
+                                        <td class="py-3 pe-4">{{ row.approval_status }}</td>
+                                        <td class="py-3 pe-4">
+                                            {{ formatTime(row.actual_start) }} - {{ formatTime(row.actual_end) }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="overtimeDetails.length === 0">
+                                        <td colspan="4" class="py-4 text-center text-gray-500">Tidak ada data.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AuthenticatedLayout>
+</template>

@@ -1,0 +1,185 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Attendance;
+use App\Models\Overtime;
+use App\Models\Setting;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class AdminDashboardController extends Controller
+{
+    public function index(): Response
+    {
+        $today = Carbon::today();
+        $monthStart = Carbon::now()->startOfMonth()->toDateString();
+        $monthEnd = Carbon::now()->endOfMonth()->toDateString();
+
+        $setting = Setting::query()->latest('id')->first();
+
+        $attendanceToday = Attendance::query()->whereDate('date', $today->toDateString());
+        $attendanceTodayCount = (clone $attendanceToday)->count();
+        $clockedInToday = (clone $attendanceToday)->whereNotNull('clock_in_at')->count();
+        $clockedOutToday = (clone $attendanceToday)->whereNotNull('clock_out_at')->count();
+
+        $lateCheckInToday = 0;
+        if ($setting?->check_in_time) {
+            $lateCheckInToday = (clone $attendanceToday)
+                ->whereNotNull('clock_in_at')
+                ->where('clock_in_at', '>', $setting->check_in_time)
+                ->count();
+        }
+
+        $overtimeStatusThisMonth = Overtime::query()
+            ->whereBetween('overtime_date', [$monthStart, $monthEnd])
+            ->selectRaw('approval_status, COUNT(*) as total')
+            ->groupBy('approval_status')
+            ->pluck('total', 'approval_status');
+
+        $approvedHoursThisMonth = Overtime::query()
+            ->where('approval_status', 'Approved')
+            ->whereBetween('overtime_date', [$monthStart, $monthEnd])
+            ->whereNotNull('actual_start')
+            ->whereNotNull('actual_end')
+            ->get(['actual_start', 'actual_end'])
+            ->sum(function (Overtime $overtime): float {
+                $start = Carbon::createFromFormat('H:i:s', $overtime->actual_start);
+                $end = Carbon::createFromFormat('H:i:s', $overtime->actual_end);
+
+                if ($end->lessThan($start)) {
+                    $end->addDay();
+                }
+
+                return $start->diffInMinutes($end) / 60;
+            });
+
+        $recentAttendances = Attendance::query()
+            ->with('user:id,full_name,id_number')
+            ->orderByDesc('date')
+            ->orderByDesc('clock_in_at')
+            ->limit(10)
+            ->get();
+
+        $pendingOvertimeRequests = Overtime::query()
+            ->with('user:id,full_name,id_number')
+            ->where('approval_status', 'Pending')
+            ->orderBy('overtime_date')
+            ->orderBy('planned_start')
+            ->limit(10)
+            ->get();
+
+        $recentOvertimes = Overtime::query()
+            ->with([
+                'user:id,full_name,id_number',
+                'approver:id,full_name',
+            ])
+            ->orderByDesc('overtime_date')
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        $totalEmployees = User::query()->where('role', 'Employee')->count();
+        $presentEmployeesToday = Attendance::query()
+            ->whereDate('date', $today->toDateString())
+            ->distinct()
+            ->count('user_id');
+        $pendingOvertimeCount = Overtime::query()->where('approval_status', 'Pending')->count();
+
+        return Inertia::render('Dashboard', [
+            'summary' => [
+                'totalEmployees' => $totalEmployees,
+                'presentEmployeesToday' => $presentEmployeesToday,
+                'attendanceToday' => $attendanceTodayCount,
+                'pendingOvertimes' => $pendingOvertimeCount,
+                'approvedOvertimesThisMonth' => (int) ($overtimeStatusThisMonth['Approved'] ?? 0),
+                'rejectedOvertimesThisMonth' => (int) ($overtimeStatusThisMonth['Rejected'] ?? 0),
+                'approvedOvertimeHoursThisMonth' => round($approvedHoursThisMonth, 1),
+            ],
+            'attendanceToday' => [
+                'clockedIn' => $clockedInToday,
+                'clockedOut' => $clockedOutToday,
+                'lateCheckIn' => $lateCheckInToday,
+            ],
+            'setting' => $setting ? [
+                'latitude' => $setting->latitude,
+                'longitude' => $setting->longitude,
+                'radius_meters' => $setting->radius_meters,
+                'check_in_time' => $setting->check_in_time,
+                'check_out_time' => $setting->check_out_time,
+            ] : null,
+            'recentAttendances' => $recentAttendances->map(function (Attendance $attendance): array {
+                return [
+                    'id' => $attendance->id,
+                    'date' => $attendance->date,
+                    'employee_name' => $attendance->user?->full_name ?? '-',
+                    'id_number' => $attendance->user?->id_number,
+                    'clock_in_at' => $attendance->clock_in_at,
+                    'clock_out_at' => $attendance->clock_out_at,
+                    'clock_in_location' => $attendance->clock_in_location,
+                    'clock_out_location' => $attendance->clock_out_location,
+                ];
+            }),
+            'pendingOvertimes' => $pendingOvertimeRequests->map(function (Overtime $overtime): array {
+                return [
+                    'id' => $overtime->id,
+                    'overtime_date' => $overtime->overtime_date,
+                    'employee_name' => $overtime->user?->full_name ?? '-',
+                    'id_number' => $overtime->user?->id_number,
+                    'planned_start' => $overtime->planned_start,
+                    'planned_end' => $overtime->planned_end,
+                    'reason' => $overtime->reason,
+                ];
+            }),
+            'recentOvertimes' => $recentOvertimes->map(function (Overtime $overtime): array {
+                return [
+                    'id' => $overtime->id,
+                    'overtime_date' => $overtime->overtime_date,
+                    'employee_name' => $overtime->user?->full_name ?? '-',
+                    'approval_status' => $overtime->approval_status,
+                    'planned_start' => $overtime->planned_start,
+                    'planned_end' => $overtime->planned_end,
+                    'actual_start' => $overtime->actual_start,
+                    'actual_end' => $overtime->actual_end,
+                    'approved_by' => $overtime->approver?->full_name,
+                ];
+            }),
+        ]);
+    }
+
+    public function approve(Request $request, Overtime $overtime): RedirectResponse
+    {
+        if ($overtime->approval_status !== 'Pending') {
+            return back()->with('error', 'Pengajuan lembur sudah diproses sebelumnya.');
+        }
+
+        $overtime->update([
+            'approval_status' => 'Approved',
+            'approved_by' => $request->user()->id,
+        ]);
+
+        return back()->with('success', 'Lembur berhasil disetujui.');
+    }
+
+    public function reject(Request $request, Overtime $overtime): RedirectResponse
+    {
+        if ($overtime->approval_status !== 'Pending') {
+            return back()->with('error', 'Pengajuan lembur sudah diproses sebelumnya.');
+        }
+
+        $overtime->update([
+            'approval_status' => 'Rejected',
+            'approved_by' => $request->user()->id,
+            'actual_start' => null,
+            'overtime_start_photo' => null,
+            'actual_end' => null,
+            'overtime_end_photo' => null,
+        ]);
+
+        return back()->with('success', 'Lembur berhasil ditolak.');
+    }
+}

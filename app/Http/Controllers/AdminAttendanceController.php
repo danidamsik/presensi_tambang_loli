@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Attendance;
+use App\Models\Setting;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class AdminAttendanceController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        $dateFrom = (string) $request->string('date_from', Carbon::now()->startOfMonth()->toDateString());
+        $dateTo = (string) $request->string('date_to', Carbon::now()->toDateString());
+        $employeeId = $request->filled('employee_id') ? (int) $request->input('employee_id') : null;
+
+        $query = Attendance::query()
+            ->with('user:id,full_name,id_number')
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->whereHas('user', fn ($userQuery) => $userQuery->where('role', 'Employee'));
+
+        if ($employeeId) {
+            $query->where('user_id', $employeeId);
+        }
+
+        $setting = Setting::query()->latest('id')->first();
+
+        $totalRecords = (clone $query)->count();
+        $clockedIn = (clone $query)->whereNotNull('clock_in_at')->count();
+        $clockedOut = (clone $query)->whereNotNull('clock_out_at')->count();
+
+        $lateCheckIn = 0;
+        if ($setting?->check_in_time) {
+            $lateCheckIn = (clone $query)
+                ->whereNotNull('clock_in_at')
+                ->where('clock_in_at', '>', $setting->check_in_time)
+                ->count();
+        }
+
+        $attendances = (clone $query)
+            ->orderByDesc('date')
+            ->orderByDesc('clock_in_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        return Inertia::render('AdminAttendances', [
+            'filters' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'employee_id' => $employeeId,
+            ],
+            'employees' => User::query()
+                ->where('role', 'Employee')
+                ->orderBy('full_name')
+                ->get(['id', 'full_name', 'id_number'])
+                ->map(fn (User $employee): array => [
+                    'id' => $employee->id,
+                    'full_name' => $employee->full_name,
+                    'id_number' => $employee->id_number,
+                ]),
+            'summary' => [
+                'totalRecords' => $totalRecords,
+                'clockedIn' => $clockedIn,
+                'clockedOut' => $clockedOut,
+                'lateCheckIn' => $lateCheckIn,
+            ],
+            'attendances' => $attendances->through(function (Attendance $attendance): array {
+                return [
+                    'id' => $attendance->id,
+                    'date' => $attendance->date,
+                    'employee_name' => $attendance->user?->full_name ?? '-',
+                    'id_number' => $attendance->user?->id_number,
+                    'clock_in_at' => $attendance->clock_in_at,
+                    'clock_out_at' => $attendance->clock_out_at,
+                    'clock_in_photo' => $attendance->clock_in_photo,
+                    'clock_out_photo' => $attendance->clock_out_photo,
+                    'clock_in_location' => $attendance->clock_in_location,
+                    'clock_out_location' => $attendance->clock_out_location,
+                ];
+            }),
+        ]);
+    }
+}

@@ -1,3 +1,115 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+        color-scheme: light;
+    }
+
+    :root.dark {
+        color-scheme: dark;
+    }
+}
+
+@layer utilities {
+    .dark .bg-gray-100 {
+        background-color: rgb(15 23 42 / 1);
+    }
+
+    .dark .bg-white {
+        background-color: rgb(15 23 42 / 1);
+    }
+
+    .dark .bg-white\/80 {
+        background-color: rgb(15 23 42 / 0.8);
+    }
+
+    .dark .text-gray-900 {
+        color: rgb(248 250 252 / 1);
+    }
+
+    .dark .text-gray-800 {
+        color: rgb(226 232 240 / 1);
+    }
+
+    .dark .text-gray-700 {
+        color: rgb(203 213 225 / 1);
+    }
+
+    .dark .text-gray-600 {
+        color: rgb(148 163 184 / 1);
+    }
+
+    .dark .text-gray-500 {
+        color: rgb(148 163 184 / 1);
+    }
+
+    .dark .border-gray-100 {
+        border-color: rgb(51 65 85 / 1);
+    }
+
+    .dark .border-gray-200 {
+        border-color: rgb(51 65 85 / 1);
+    }
+
+    .dark .border-gray-300 {
+        border-color: rgb(71 85 105 / 1);
+    }
+
+    .dark .hover\:bg-gray-50:hover {
+        background-color: rgb(30 41 59 / 1);
+    }
+
+    .dark .focus\:bg-gray-50:focus {
+        background-color: rgb(30 41 59 / 1);
+    }
+
+    .dark .hover\:bg-gray-100:hover {
+        background-color: rgb(30 41 59 / 1);
+    }
+
+    .dark .focus\:bg-gray-100:focus {
+        background-color: rgb(30 41 59 / 1);
+    }
+
+    .dark .hover\:text-gray-700:hover {
+        color: rgb(248 250 252 / 1);
+    }
+
+    .dark .focus\:text-gray-700:focus {
+        color: rgb(248 250 252 / 1);
+    }
+
+    .dark .ring-black {
+        --tw-ring-color: rgb(15 23 42 / 1);
+    }
+
+    .dark .bg-slate-50 {
+        background-color: rgb(2 6 23 / 1);
+    }
+
+    .dark .text-slate-900 {
+        color: rgb(248 250 252 / 1);
+    }
+
+    .dark .text-slate-700 {
+        color: rgb(203 213 225 / 1);
+    }
+
+    .dark .text-slate-600 {
+        color: rgb(148 163 184 / 1);
+    }
+
+    .dark .text-slate-500 {
+        color: rgb(148 163 184 / 1);
+    }
+
+    .dark .border-slate-200 {
+        border-color: rgb(51 65 85 / 1);
+    }
+
+    .dark .hover\:bg-slate-50:hover {
+        background-color: rgb(30 41 59 / 1);
+    }
+}
