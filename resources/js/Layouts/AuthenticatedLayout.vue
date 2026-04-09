@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -10,6 +10,8 @@ const showingNavigationDropdown = ref(false);
 const isSidebarCollapsed = ref(false);
 const page = usePage();
 const SIDEBAR_STORAGE_KEY = 'admin-sidebar-collapsed';
+let sidebarResizeTimeoutId = null;
+let sidebarResizeFrameId = null;
 
 const isAdmin = computed(() => page.props.auth?.user?.role === 'Admin');
 const homeRouteName = computed(() => (isAdmin.value ? 'dashboard' : 'home'));
@@ -67,9 +69,45 @@ const persistSidebarState = () => {
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isSidebarCollapsed.value));
 };
 
+const emitAdminLayoutResize = () => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.dispatchEvent(new Event('resize'));
+    window.dispatchEvent(new CustomEvent('admin-layout:resize', {
+        detail: {
+            sidebarCollapsed: isSidebarCollapsed.value,
+        },
+    }));
+};
+
+const scheduleAdminLayoutResize = () => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (sidebarResizeFrameId) {
+        window.cancelAnimationFrame(sidebarResizeFrameId);
+    }
+
+    if (sidebarResizeTimeoutId) {
+        window.clearTimeout(sidebarResizeTimeoutId);
+    }
+
+    sidebarResizeFrameId = window.requestAnimationFrame(() => {
+        emitAdminLayoutResize();
+
+        sidebarResizeTimeoutId = window.setTimeout(() => {
+            emitAdminLayoutResize();
+        }, 120);
+    });
+};
+
 const toggleDesktopSidebar = () => {
     isSidebarCollapsed.value = !isSidebarCollapsed.value;
     persistSidebarState();
+    scheduleAdminLayoutResize();
 };
 
 onMounted(() => {
@@ -78,6 +116,21 @@ onMounted(() => {
     }
 
     isSidebarCollapsed.value = window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
+    scheduleAdminLayoutResize();
+});
+
+onBeforeUnmount(() => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (sidebarResizeTimeoutId) {
+        window.clearTimeout(sidebarResizeTimeoutId);
+    }
+
+    if (sidebarResizeFrameId) {
+        window.cancelAnimationFrame(sidebarResizeFrameId);
+    }
 });
 </script>
 
@@ -90,10 +143,8 @@ onMounted(() => {
 
         <div class="relative flex min-h-screen">
             <aside
-                class="hidden shrink-0 overflow-hidden border-r border-slate-200/70 bg-white/85 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur transition-all duration-300 ease-out xl:flex xl:flex-col dark:border-slate-800 dark:bg-slate-950/85"
-                :class="isSidebarCollapsed
-                    ? 'xl:w-0 xl:-translate-x-6 xl:border-r-0 xl:px-0 xl:py-0 xl:opacity-0'
-                    : 'xl:w-80 xl:translate-x-0 xl:px-6 xl:py-8 xl:opacity-100'"
+                v-show="!isSidebarCollapsed"
+                class="hidden w-80 shrink-0 overflow-hidden border-r border-slate-200/70 bg-white/85 px-6 py-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur xl:flex xl:flex-col dark:border-slate-800 dark:bg-slate-950/85"
             >
                 <Link :href="route(homeRouteName)" class="inline-flex">
                     <ApplicationLogo class="max-w-full" />
