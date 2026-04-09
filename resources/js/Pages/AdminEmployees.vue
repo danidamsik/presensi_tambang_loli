@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Modal from '@/Components/Modal.vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps({
     employees: { type: Object, required: true },
@@ -12,11 +13,13 @@ const props = defineProps({
 const page = usePage();
 const search = ref(props.filters.q ?? '');
 const editingEmployee = ref(null);
+const showCreateModal = ref(false);
 
 const flashSuccess = computed(() => page.props.flash?.success ?? null);
 const flashError = computed(() => page.props.flash?.error ?? null);
 const hasActiveFilter = computed(() => search.value.trim().length > 0);
 const totalFilteredEmployees = computed(() => props.employees.total ?? props.employees.data.length);
+let searchDebounceTimeoutId = null;
 
 const createForm = useForm({
     id_number: '',
@@ -70,21 +73,34 @@ const formatDateTime = (value) => {
 };
 
 const applyFilter = () => {
-    router.get(route('admin.employees.index'), { q: search.value }, {
+    const query = search.value.trim();
+
+    router.get(route('admin.employees.index'), { q: query || null }, {
         preserveState: true,
+        preserveScroll: true,
         replace: true,
     });
 };
 
 const resetFilter = () => {
     search.value = '';
-    applyFilter();
+};
+
+const openCreateModal = () => {
+    createForm.clearErrors();
+    showCreateModal.value = true;
+};
+
+const closeCreateModal = () => {
+    showCreateModal.value = false;
+    createForm.reset();
+    createForm.clearErrors();
 };
 
 const submitCreate = () => {
     createForm.post(route('admin.employees.store'), {
         preserveScroll: true,
-        onSuccess: () => createForm.reset(),
+        onSuccess: () => closeCreateModal(),
     });
 };
 
@@ -130,6 +146,22 @@ const visitPage = (url) => {
         preserveState: true,
     });
 };
+
+watch(search, () => {
+    if (searchDebounceTimeoutId) {
+        window.clearTimeout(searchDebounceTimeoutId);
+    }
+
+    searchDebounceTimeoutId = window.setTimeout(() => {
+        applyFilter();
+    }, 300);
+});
+
+onBeforeUnmount(() => {
+    if (searchDebounceTimeoutId) {
+        window.clearTimeout(searchDebounceTimeoutId);
+    }
+});
 </script>
 
 <template>
@@ -137,269 +169,231 @@ const visitPage = (url) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div class="space-y-3">
-                    <span class="inline-flex w-fit items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-                        Admin Employees
-                    </span>
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
-                            Kelola akun karyawan dengan rapi dan konsisten.
-                        </h1>
-                        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-                            Tampilan ini diselaraskan dengan dashboard admin agar alur tambah, cari, edit, dan hapus akun tetap terasa satu sistem.
-                        </p>
-                    </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Kelola Karyawan</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Tambah, cari, edit, dan hapus akun karyawan.</p>
                 </div>
-
-                <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[23rem]">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
-                        <p class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Status</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {{ hasActiveFilter ? 'Filter aktif' : 'Menampilkan semua data' }}
-                        </p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
-                        <p class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Data Ditampilkan</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ totalFilteredEmployees }} akun</p>
-                    </div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">
+                    <p>{{ hasActiveFilter ? 'Filter aktif' : 'Semua data' }}</p>
+                    <p class="font-medium text-slate-700 dark:text-slate-300">{{ totalFilteredEmployees }} akun</p>
                 </div>
             </div>
         </template>
 
-        <div class="space-y-6">
-            <div v-if="flashSuccess" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+        <div class="space-y-4">
+            <div v-if="flashSuccess" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                 {{ flashSuccess }}
             </div>
-            <div v-if="flashError" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+            <div v-if="flashError" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                 {{ flashError }}
             </div>
 
-            <section class="overflow-hidden rounded-[28px] bg-slate-950 text-white shadow-[0_30px_90px_rgba(15,23,42,0.18)] dark:bg-slate-900">
-                <div class="grid gap-6 p-6 sm:p-8">
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div class="max-w-2xl">
-                            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-amber-300">Manajemen Akun</p>
-                            <h2 class="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">
-                                Susun data employee yang mudah dicari dan aman dikelola.
-                            </h2>
-                            <p class="mt-4 text-sm leading-7 text-slate-300">
-                                Gunakan form di bawah untuk menambah akun baru, lalu manfaatkan pencarian untuk merapikan data yang sudah ada.
-                            </p>
-                        </div>
-
-                        <div class="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                            <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Catatan</p>
-                            <div class="mt-4 space-y-2 text-sm text-slate-200">
-                                <p>Pastikan `ID Number` unik.</p>
-                                <p>Gunakan email aktif untuk akses login.</p>
-                                <p>Ganti password hanya saat dibutuhkan.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <article
-                            v-for="card in summaryCards"
-                            :key="card.label"
-                            class="rounded-[24px] bg-gradient-to-br p-[1px] shadow-lg"
-                            :class="card.accent"
-                        >
-                            <div class="h-full rounded-[23px] bg-white/12 p-5 backdrop-blur dark:bg-slate-950/35">
-                                <p class="text-sm font-medium opacity-80">{{ card.label }}</p>
-                                <p class="mt-3 text-3xl font-semibold">{{ card.value }}</p>
-                                <p class="mt-3 text-sm leading-6 opacity-75">{{ card.hint }}</p>
-                            </div>
-                        </article>
-                    </div>
+            <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Akun</h2>
+                <div class="mt-3 grid gap-3 md:grid-cols-3">
+                    <article
+                        v-for="card in summaryCards"
+                        :key="card.label"
+                        class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
+                    >
+                        <p class="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{{ card.label }}</p>
+                        <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ card.hint }}</p>
+                    </article>
                 </div>
             </section>
 
-            <section class="grid items-start gap-6 xl:grid-cols-[minmax(340px,0.9fr)_minmax(0,1.4fr)]">
-                <div class="self-start space-y-6 xl:sticky xl:top-28">
-                    <section class="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Form Input</p>
-                        <h3 class="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Tambah karyawan</h3>
+            <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Daftar Data</p>
+                        <h3 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Daftar karyawan</h3>
+                    </div>
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
+                            {{ totalFilteredEmployees }} data ditemukan
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                            @click="openCreateModal"
+                        >
+                            Tambah Karyawan
+                        </button>
+                    </div>
+                </div>
 
-                        <form class="mt-6 space-y-4" @submit.prevent="submitCreate">
+                <div class="mt-4 flex flex-col gap-3 lg:flex-row">
+                    <input
+                        v-model="search"
+                        type="text"
+                        placeholder="Cari nama / ID / email"
+                        :class="inputClass(false)"
+                        class="mt-0 lg:flex-1"
+                    />
+                    <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
+                        Reset
+                    </button>
+                </div>
+
+                <div class="mt-4 space-y-3 md:hidden">
+                    <article
+                        v-for="employee in employees.data"
+                        :key="employee.id"
+                        class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/80"
+                    >
+                        <div class="flex items-start justify-between gap-3">
                             <div>
-                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">ID Number</label>
-                                <input v-model="createForm.id_number" type="text" :class="inputClass(!!createForm.errors.id_number)" required />
-                                <p v-if="createForm.errors.id_number" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ createForm.errors.id_number }}</p>
+                                <p class="font-semibold text-slate-900 dark:text-slate-100">{{ employee.full_name }}</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ employee.email }}</p>
+                            </div>
+                            <span class="rounded-lg bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">
+                                {{ employee.id_number }}
+                            </span>
+                        </div>
+                        <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Dibuat: {{ formatDateTime(employee.created_at) }}</p>
+                        <div class="mt-4 grid grid-cols-2 gap-3">
+                            <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
+                                Edit
+                            </button>
+                            <button type="button" class="rounded-lg bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700" @click="removeEmployee(employee)">
+                                Hapus
+                            </button>
+                        </div>
+                    </article>
+                    <div v-if="employees.data.length === 0" class="rounded-lg border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                        Data karyawan belum ada.
+                    </div>
+                </div>
+
+                <div class="mt-4 hidden overflow-x-auto md:block">
+                    <table class="min-w-full text-sm">
+                        <thead class="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                            <tr>
+                                <th class="py-3 pe-4 font-medium">ID Number</th>
+                                <th class="py-3 pe-4 font-medium">Nama</th>
+                                <th class="py-3 pe-4 font-medium">Email</th>
+                                <th class="py-3 pe-4 font-medium">Dibuat</th>
+                                <th class="py-3 pe-4 font-medium">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 text-slate-700 dark:divide-slate-800 dark:text-slate-300">
+                            <tr v-for="employee in employees.data" :key="employee.id">
+                                <td class="py-4 pe-4 font-medium text-slate-900 dark:text-slate-100">{{ employee.id_number }}</td>
+                                <td class="py-4 pe-4">{{ employee.full_name }}</td>
+                                <td class="py-4 pe-4">{{ employee.email }}</td>
+                                <td class="py-4 pe-4">{{ formatDateTime(employee.created_at) }}</td>
+                                <td class="py-4 pe-4">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
+                                            Edit
+                                        </button>
+                                        <button type="button" class="rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20" @click="removeEmployee(employee)">
+                                            Hapus
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr v-if="employees.data.length === 0">
+                                <td colspan="5" class="py-8 text-center text-slate-500 dark:text-slate-400">Data karyawan belum ada.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div v-if="employees.links?.length > 3" class="mt-4 flex flex-wrap gap-2">
+                    <button
+                        v-for="(link, index) in employees.links"
+                        :key="index"
+                        type="button"
+                        :disabled="!link.url || link.active"
+                        class="inline-flex min-w-[2.75rem] items-center justify-center rounded-lg border px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="link.active
+                            ? 'border-slate-950 bg-slate-950 text-white dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'"
+                        @click="visitPage(link.url)"
+                        v-html="link.label"
+                    />
+                </div>
+            </section>
+
+            <Modal :show="showCreateModal" max-width="2xl" @close="closeCreateModal">
+                <div class="p-4 sm:p-6">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-900">Tambah karyawan</h3>
+                            <p class="mt-1 text-sm text-slate-500">Isi data akun baru untuk karyawan.</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50"
+                            @click="closeCreateModal"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+
+                    <form class="mt-4 space-y-4" @submit.prevent="submitCreate">
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">ID Number</label>
+                            <input v-model="createForm.id_number" type="text" :class="inputClass(!!createForm.errors.id_number)" required />
+                            <p v-if="createForm.errors.id_number" class="mt-2 text-xs text-rose-600">{{ createForm.errors.id_number }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">Nama Lengkap</label>
+                            <input v-model="createForm.full_name" type="text" :class="inputClass(!!createForm.errors.full_name)" required />
+                            <p v-if="createForm.errors.full_name" class="mt-2 text-xs text-rose-600">{{ createForm.errors.full_name }}</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-slate-700">Email</label>
+                            <input v-model="createForm.email" type="email" :class="inputClass(!!createForm.errors.email)" required />
+                            <p v-if="createForm.errors.email" class="mt-2 text-xs text-rose-600">{{ createForm.errors.email }}</p>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="text-sm font-medium text-slate-700">Password</label>
+                                <input v-model="createForm.password" type="password" :class="inputClass(!!createForm.errors.password)" required />
+                                <p v-if="createForm.errors.password" class="mt-2 text-xs text-rose-600">{{ createForm.errors.password }}</p>
                             </div>
                             <div>
-                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Nama Lengkap</label>
-                                <input v-model="createForm.full_name" type="text" :class="inputClass(!!createForm.errors.full_name)" required />
-                                <p v-if="createForm.errors.full_name" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ createForm.errors.full_name }}</p>
+                                <label class="text-sm font-medium text-slate-700">Konfirmasi Password</label>
+                                <input v-model="createForm.password_confirmation" type="password" :class="inputClass(false)" required />
                             </div>
-                            <div>
-                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-                                <input v-model="createForm.email" type="email" :class="inputClass(!!createForm.errors.email)" required />
-                                <p v-if="createForm.errors.email" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ createForm.errors.email }}</p>
-                            </div>
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
-                                    <input v-model="createForm.password" type="password" :class="inputClass(!!createForm.errors.password)" required />
-                                    <p v-if="createForm.errors.password" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ createForm.errors.password }}</p>
-                                </div>
-                                <div>
-                                    <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Konfirmasi Password</label>
-                                    <input v-model="createForm.password_confirmation" type="password" :class="inputClass(false)" required />
-                                </div>
-                            </div>
+                        </div>
+
+                        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                @click="closeCreateModal"
+                            >
+                                Batal
+                            </button>
                             <button
                                 type="submit"
                                 :disabled="createForm.processing"
-                                class="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
+                                class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {{ createForm.processing ? 'Menyimpan...' : 'Simpan Karyawan' }}
                             </button>
-                        </form>
-                    </section>
-
-                    <section class="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Panduan Cepat</p>
-                        <h3 class="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Agar input lebih rapi</h3>
-                        <div class="mt-5 space-y-3">
-                            <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
-                                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Gunakan ID yang konsisten</p>
-                                <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">Pastikan format `ID Number` mengikuti pola internal perusahaan agar mudah dicari.</p>
-                            </div>
-                            <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
-                                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Cek data sebelum tambah</p>
-                                <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">Gunakan pencarian di panel kanan untuk menghindari duplikasi akun employee.</p>
-                            </div>
-                            <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
-                                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Password hanya seperlunya</p>
-                                <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">Saat edit data, isi password baru hanya jika memang ingin melakukan reset kredensial.</p>
-                            </div>
                         </div>
-                    </section>
+                    </form>
                 </div>
+            </Modal>
 
-                <section class="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Daftar Data</p>
-                            <h3 class="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Daftar karyawan</h3>
-                        </div>
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
-                            {{ totalFilteredEmployees }} data ditemukan
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex flex-col gap-3 lg:flex-row">
-                        <input
-                            v-model="search"
-                            type="text"
-                            placeholder="Cari nama / ID / email"
-                            :class="inputClass(false)"
-                            class="mt-0 lg:flex-1"
-                            @keyup.enter="applyFilter"
-                        />
-                        <button type="button" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="applyFilter">
-                            Cari
-                        </button>
-                        <button type="button" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
-                            Reset
-                        </button>
-                    </div>
-
-                    <div class="mt-6 space-y-3 md:hidden">
-                        <article
-                            v-for="employee in employees.data"
-                            :key="employee.id"
-                            class="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/80"
-                        >
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p class="font-semibold text-slate-900 dark:text-slate-100">{{ employee.full_name }}</p>
-                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ employee.email }}</p>
-                                </div>
-                                <span class="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">
-                                    {{ employee.id_number }}
-                                </span>
-                            </div>
-                            <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Dibuat: {{ formatDateTime(employee.created_at) }}</p>
-                            <div class="mt-4 grid grid-cols-2 gap-3">
-                                <button type="button" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
-                                    Edit
-                                </button>
-                                <button type="button" class="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700" @click="removeEmployee(employee)">
-                                    Hapus
-                                </button>
-                            </div>
-                        </article>
-                        <div v-if="employees.data.length === 0" class="rounded-3xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                            Data karyawan belum ada.
-                        </div>
-                    </div>
-
-                    <div class="mt-6 hidden overflow-x-auto md:block">
-                        <table class="min-w-full text-sm">
-                            <thead class="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                                <tr>
-                                    <th class="py-3 pe-4 font-medium">ID Number</th>
-                                    <th class="py-3 pe-4 font-medium">Nama</th>
-                                    <th class="py-3 pe-4 font-medium">Email</th>
-                                    <th class="py-3 pe-4 font-medium">Dibuat</th>
-                                    <th class="py-3 pe-4 font-medium">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-200 text-slate-700 dark:divide-slate-800 dark:text-slate-300">
-                                <tr v-for="employee in employees.data" :key="employee.id">
-                                    <td class="py-4 pe-4 font-medium text-slate-900 dark:text-slate-100">{{ employee.id_number }}</td>
-                                    <td class="py-4 pe-4">{{ employee.full_name }}</td>
-                                    <td class="py-4 pe-4">{{ employee.email }}</td>
-                                    <td class="py-4 pe-4">{{ formatDateTime(employee.created_at) }}</td>
-                                    <td class="py-4 pe-4">
-                                        <div class="flex items-center gap-2">
-                                            <button type="button" class="rounded-2xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
-                                                Edit
-                                            </button>
-                                            <button type="button" class="rounded-2xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20" @click="removeEmployee(employee)">
-                                                Hapus
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr v-if="employees.data.length === 0">
-                                    <td colspan="5" class="py-8 text-center text-slate-500 dark:text-slate-400">Data karyawan belum ada.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div v-if="employees.links?.length > 3" class="mt-6 flex flex-wrap gap-2">
-                        <button
-                            v-for="(link, index) in employees.links"
-                            :key="index"
-                            type="button"
-                            :disabled="!link.url || link.active"
-                            class="inline-flex min-w-[2.75rem] items-center justify-center rounded-2xl border px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
-                            :class="link.active
-                                ? 'border-slate-950 bg-slate-950 text-white dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'"
-                            @click="visitPage(link.url)"
-                            v-html="link.label"
-                        />
-                    </div>
-                </section>
-            </section>
-
-            <section v-if="editingEmployee" class="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+            <section v-if="editingEmployee" class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Edit Data</p>
-                        <h3 class="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Edit karyawan: {{ editingEmployee.full_name }}</h3>
+                        <h3 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Edit karyawan: {{ editingEmployee.full_name }}</h3>
                     </div>
-                    <button type="button" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="cancelEdit">
+                    <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="cancelEdit">
                         Tutup Panel Edit
                     </button>
                 </div>
 
-                <form class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="submitEdit">
+                <form class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="submitEdit">
                     <div>
                         <label class="text-sm font-medium text-slate-700 dark:text-slate-300">ID Number</label>
                         <input v-model="editForm.id_number" type="text" :class="inputClass(!!editForm.errors.id_number)" required />
@@ -428,11 +422,11 @@ const visitPage = (url) => {
                         <button
                             type="submit"
                             :disabled="editForm.processing"
-                            class="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
+                            class="rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
                         >
                             {{ editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
                         </button>
-                        <button type="button" class="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="cancelEdit">
+                        <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="cancelEdit">
                             Batal
                         </button>
                     </div>

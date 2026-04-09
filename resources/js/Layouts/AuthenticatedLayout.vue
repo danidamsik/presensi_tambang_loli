@@ -136,74 +136,38 @@ onBeforeUnmount(() => {
 
 <template>
     <div v-if="isAdmin" class="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
-        <div class="pointer-events-none fixed inset-0 overflow-hidden">
-            <div class="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.22),_transparent_42%),radial-gradient(circle_at_top_right,_rgba(15,23,42,0.12),_transparent_38%)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.18),_transparent_38%),radial-gradient(circle_at_top_right,_rgba(148,163,184,0.14),_transparent_32%)]"></div>
-            <div class="absolute bottom-0 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-amber-200/30 blur-3xl dark:bg-amber-500/10"></div>
-        </div>
-
-        <div class="relative flex min-h-screen">
+        <div class="min-h-screen">
             <aside
                 v-show="!isSidebarCollapsed"
-                class="hidden w-80 shrink-0 overflow-hidden border-r border-slate-200/70 bg-white/85 px-6 py-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur xl:flex xl:flex-col dark:border-slate-800 dark:bg-slate-950/85"
+                class="hidden border-r border-slate-200 bg-white px-4 py-6 xl:fixed xl:inset-y-0 xl:left-0 xl:z-20 xl:flex xl:h-screen xl:w-64 xl:flex-col xl:overflow-y-auto dark:border-slate-800 dark:bg-slate-900"
             >
                 <Link :href="route(homeRouteName)" class="inline-flex">
                     <ApplicationLogo class="max-w-full" />
                 </Link>
 
-                <div class="mt-10 rounded-3xl border border-slate-200/80 bg-slate-950 px-5 py-5 text-white shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900">
-                    <p class="text-xs uppercase tracking-[0.28em] text-amber-300">Admin Console</p>
-                    <h1 class="mt-3 text-2xl font-semibold leading-tight">Panel kendali presensi dan lembur.</h1>
-                    <p class="mt-3 text-sm text-slate-300">
-                        Gunakan navigasi ini untuk memantau kehadiran, pengaturan lokasi, dan approval operasional.
-                    </p>
-                </div>
-
-                <nav class="mt-8 space-y-2">
+                <nav class="mt-6 space-y-1">
                     <Link
                         v-for="link in navLinks"
                         :key="link.name"
                         :href="route(link.name)"
-                        class="group block rounded-2xl border px-4 py-4 transition"
+                        class="block rounded-lg px-3 py-2 text-sm font-medium transition"
                         :class="route().current(link.name)
-                            ? 'border-amber-200 bg-amber-50 text-slate-900 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-slate-100'
-                            : 'border-transparent bg-white/70 text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900 dark:bg-slate-900/40 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-100'"
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
                         @click="closeNavigationDropdown"
                     >
-                        <div class="flex items-center justify-between gap-4">
-                            <div>
-                                <p class="text-sm font-semibold">{{ link.label }}</p>
-                                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                                    {{ link.description }}
-                                </p>
-                            </div>
-                            <span
-                                class="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold transition"
-                                :class="route().current(link.name)
-                                    ? 'bg-slate-900 text-white dark:bg-amber-400 dark:text-slate-950'
-                                    : 'bg-slate-100 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-amber-500/15 dark:group-hover:text-amber-300'"
-                            >
-                                {{ link.label.slice(0, 1) }}
-                            </span>
-                        </div>
+                        {{ link.label }}
                     </Link>
                 </nav>
 
-                <div class="mt-auto rounded-3xl border border-slate-200/70 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/80">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-sm font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                            {{ userInitials }}
-                        </div>
-                        <div class="min-w-0">
-                            <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ displayName }}</p>
-                            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ $page.props.auth.user.email }}</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-5 flex items-center gap-3">
-                        <ThemeToggle class="flex-1 justify-center" />
+                <div class="mt-auto border-t border-slate-200 pt-4 dark:border-slate-800">
+                    <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ displayName }}</p>
+                    <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ $page.props.auth.user.email }}</p>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <ThemeToggle class="justify-center" />
                         <Link
                             :href="route('profile.edit')"
-                            class="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                            class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                             Profil
                         </Link>
@@ -211,13 +175,16 @@ onBeforeUnmount(() => {
                 </div>
             </aside>
 
-            <div class="flex min-w-0 flex-1 flex-col">
-                <header class="sticky top-0 z-30 border-b border-white/60 bg-white/70 backdrop-blur xl:border-none xl:bg-transparent dark:border-slate-800 dark:bg-slate-950/80 xl:dark:bg-transparent">
-                    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-                        <div class="flex min-w-0 items-center gap-3">
+            <div
+                class="flex min-h-screen flex-col transition-[padding] duration-300"
+                :class="isSidebarCollapsed ? 'xl:pl-0' : 'xl:pl-64'"
+            >
+                <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+                    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+                        <div class="flex min-w-0 items-center gap-2">
                             <button
                                 type="button"
-                                class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 xl:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                                class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 xl:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                                 @click="toggleNavigationDropdown"
                             >
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -233,7 +200,7 @@ onBeforeUnmount(() => {
 
                             <button
                                 type="button"
-                                class="hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 xl:inline-flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                                class="hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 xl:inline-flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                                 @click="toggleDesktopSidebar"
                             >
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -247,49 +214,27 @@ onBeforeUnmount(() => {
                                 </svg>
                             </button>
 
-                            <div class="min-w-0">
-                                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">Admin Workspace</p>
-                                <h2 class="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">{{ currentNav?.label }}</h2>
-                            </div>
+                            <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ currentNav?.label }}</p>
                         </div>
 
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
                             <ThemeToggle compact />
-
-                            <div class="hidden items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-sm backdrop-blur sm:flex dark:border-slate-700 dark:bg-slate-900/80">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-sm font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-                                    {{ userInitials }}
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ displayName }}</p>
-                                    <p class="truncate text-xs text-slate-500 dark:text-slate-400">Administrator</p>
-                                </div>
-                            </div>
+                            <span class="hidden max-w-[12rem] truncate text-sm text-slate-600 sm:block dark:text-slate-300">{{ displayName }}</span>
 
                             <Dropdown align="right" width="56">
                                 <template #trigger>
                                     <span class="inline-flex">
                                         <button
                                             type="button"
-                                            class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                                            class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                                         >
-                                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                                <path
-                                                    d="M12 5V5.01M12 12V12.01M12 19V19.01"
-                                                    stroke="currentColor"
-                                                    stroke-width="2"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                />
-                                            </svg>
+                                            <span class="text-xs font-semibold">{{ userInitials }}</span>
                                         </button>
                                     </span>
                                 </template>
 
                                 <template #content>
-                                    <div class="px-4 py-3 text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                                        Akun Admin
-                                    </div>
+                                    <div class="px-4 py-3 text-xs uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">Akun</div>
                                     <DropdownLink :href="route('profile.edit')">Profile</DropdownLink>
                                     <DropdownLink :href="route('logout')" method="post" as="button">Log Out</DropdownLink>
                                 </template>
@@ -297,27 +242,26 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div v-if="showingNavigationDropdown" class="border-t border-slate-200 bg-white/95 px-4 py-4 shadow-xl backdrop-blur xl:hidden dark:border-slate-800 dark:bg-slate-950/95">
-                        <div class="space-y-2">
+                    <div v-if="showingNavigationDropdown" class="border-t border-slate-200 bg-white px-4 py-3 xl:hidden dark:border-slate-800 dark:bg-slate-950">
+                        <div class="space-y-1">
                             <Link
                                 v-for="link in navLinks"
                                 :key="link.name"
                                 :href="route(link.name)"
-                                class="block rounded-2xl border px-4 py-4 transition"
+                                class="block rounded-lg px-3 py-2 text-sm font-medium transition"
                                 :class="route().current(link.name)
-                                    ? 'border-amber-200 bg-amber-50 text-slate-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-slate-100'
-                                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-900'"
+                                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
                                 @click="closeNavigationDropdown"
                             >
-                                <p class="text-sm font-semibold">{{ link.label }}</p>
-                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ link.description }}</p>
+                                {{ link.label }}
                             </Link>
                         </div>
 
-                        <div class="mt-4 grid grid-cols-2 gap-3">
+                        <div class="mt-3 grid grid-cols-2 gap-2">
                             <Link
                                 :href="route('profile.edit')"
-                                class="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                                class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
                                 @click="closeNavigationDropdown"
                             >
                                 Profil
@@ -326,7 +270,7 @@ onBeforeUnmount(() => {
                                 :href="route('logout')"
                                 method="post"
                                 as="button"
-                                class="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-medium text-white dark:bg-amber-400 dark:text-slate-950"
+                                class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white dark:bg-slate-100 dark:text-slate-900"
                             >
                                 Log Out
                             </Link>
@@ -334,11 +278,11 @@ onBeforeUnmount(() => {
                     </div>
                 </header>
 
-                <main class="relative flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-                    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6">
+                <main class="flex-1 px-4 py-4 sm:px-6 lg:px-8">
+                    <div class="mx-auto flex w-full max-w-7xl flex-col gap-4">
                         <section
                             v-if="$slots.header"
-                            class="rounded-[28px] border border-white/70 bg-white/80 p-5 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-7 dark:border-slate-800 dark:bg-slate-950/80"
+                            class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
                         >
                             <slot name="header" />
                         </section>

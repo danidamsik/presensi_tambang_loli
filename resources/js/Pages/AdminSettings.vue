@@ -147,6 +147,26 @@ const updateRadiusCircle = () => {
     }
 };
 
+const waitForGoogleMaps = (timeoutMs = 10000, intervalMs = 50) => new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+
+    const checkAvailability = () => {
+        if (window.google?.maps) {
+            resolve(window.google.maps);
+            return;
+        }
+
+        if (Date.now() - startedAt >= timeoutMs) {
+            reject(new Error('Google Maps tidak tersedia setelah script dimuat.'));
+            return;
+        }
+
+        window.setTimeout(checkAvailability, intervalMs);
+    };
+
+    checkAvailability();
+});
+
 const loadGoogleMapsApi = () => {
     if (window.google?.maps) {
         return Promise.resolve(window.google.maps);
@@ -160,32 +180,37 @@ const loadGoogleMapsApi = () => {
         return window.__googleMapsApiPromise;
     }
 
-    window.__googleMapsApiPromise = new Promise((resolve, reject) => {
+    const resolveWhenReady = (resolve, reject) => {
+        waitForGoogleMaps()
+            .then((maps) => resolve(maps))
+            .catch((error) => reject(error));
+    };
+
+    const mapApiPromise = new Promise((resolve, reject) => {
         const scriptId = 'google-maps-js-api';
         const existingScript = document.getElementById(scriptId);
 
         if (existingScript) {
-            existingScript.addEventListener('load', () => resolve(window.google.maps), { once: true });
+            existingScript.addEventListener('load', () => resolveWhenReady(resolve, reject), { once: true });
             existingScript.addEventListener('error', () => reject(new Error('Gagal memuat script Google Maps.')), { once: true });
+            resolveWhenReady(resolve, reject);
             return;
         }
 
         const script = document.createElement('script');
         script.id = scriptId;
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsApiKey)}&loading=async`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(googleMapsApiKey)}&v=weekly`;
         script.async = true;
         script.defer = true;
-        script.onload = () => {
-            if (window.google?.maps) {
-                resolve(window.google.maps);
-                return;
-            }
-
-            reject(new Error('Google Maps tidak tersedia setelah script dimuat.'));
-        };
+        script.onload = () => resolveWhenReady(resolve, reject);
         script.onerror = () => reject(new Error('Gagal memuat Google Maps. Cek API key atau koneksi internet.'));
 
         document.head.appendChild(script);
+    });
+
+    window.__googleMapsApiPromise = mapApiPromise.catch((error) => {
+        window.__googleMapsApiPromise = null;
+        throw error;
     });
 
     return window.__googleMapsApiPromise;
@@ -248,6 +273,14 @@ const initMap = async () => {
                 updateCoordinatesFromMap(event.latLng.lat(), event.latLng.lng());
             }),
         );
+
+        scheduleLayoutResize();
+
+        if (typeof window !== 'undefined') {
+            window.setTimeout(() => {
+                scheduleLayoutResize();
+            }, 180);
+        }
     } catch (error) {
         mapError.value = error instanceof Error ? error.message : 'Terjadi error saat memuat Google Maps.';
     } finally {
@@ -321,104 +354,63 @@ onBeforeUnmount(() => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div class="space-y-3">
-                    <span class="inline-flex w-fit items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-                        Admin Settings
-                    </span>
-                    <div>
-                        <h1 class="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
-                            Atur lokasi kantor dan jam kerja dengan presisi.
-                        </h1>
-                        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-                            Halaman ini mengontrol titik koordinat, radius presensi, dan waktu operasional agar data kehadiran tetap konsisten.
-                        </p>
-                    </div>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Pengaturan Sistem</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Atur koordinat kantor, radius presensi, dan jam kerja.</p>
                 </div>
-
-                <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[23rem]">
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
-                        <p class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Latitude</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ currentLatitude }}</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
-                        <p class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Longitude</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ currentLongitude }}</p>
-                    </div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">
+                    <p>Lat: {{ currentLatitude }}</p>
+                    <p>Lng: {{ currentLongitude }}</p>
                 </div>
             </div>
         </template>
 
-        <div class="space-y-6">
-            <div v-if="flashSuccess" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+        <div class="space-y-4">
+            <div v-if="flashSuccess" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                 {{ flashSuccess }}
             </div>
-            <div v-if="flashError" class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
+            <div v-if="flashError" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                 {{ flashError }}
             </div>
 
-            <section class="overflow-hidden rounded-[28px] bg-slate-950 text-white shadow-[0_30px_90px_rgba(15,23,42,0.18)] dark:bg-slate-900">
-                <div class="grid gap-6 p-6 sm:p-8">
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div class="max-w-2xl">
-                            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-amber-300">Kontrol Presensi</p>
-                            <h2 class="mt-4 text-3xl font-semibold leading-tight sm:text-4xl">
-                                Kelola area valid absensi dan jadwal kerja dari satu panel.
-                            </h2>
-                            <p class="mt-4 text-sm leading-7 text-slate-300">
-                                Gunakan peta untuk menetapkan titik kantor, atur radius presensi agar sesuai kondisi lapangan, lalu simpan jam masuk dan pulang sebagai acuan sistem.
-                            </p>
-                        </div>
-
-                        <div class="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-                            <p class="text-xs uppercase tracking-[0.22em] text-slate-400">Panduan singkat</p>
-                            <div class="mt-4 space-y-2 text-sm text-slate-200">
-                                <p>Klik peta atau drag marker untuk mengubah koordinat.</p>
-                                <p>Radius terlalu kecil berisiko membuat presensi gagal.</p>
-                                <p>Jam kerja dipakai sebagai acuan keterlambatan dan operasional.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <article
-                            v-for="card in summaryCards"
-                            :key="card.label"
-                            class="rounded-[24px] bg-gradient-to-br p-[1px] shadow-lg"
-                            :class="card.accent"
-                        >
-                            <div class="h-full rounded-[23px] bg-white/12 p-5 backdrop-blur dark:bg-slate-950/35">
-                                <p class="text-sm font-medium opacity-80">{{ card.label }}</p>
-                                <p class="mt-3 text-3xl font-semibold">{{ card.value }}</p>
-                                <p class="mt-3 text-sm leading-6 opacity-75">{{ card.hint }}</p>
-                            </div>
-                        </article>
-                    </div>
+            <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Pengaturan</h2>
+                <div class="mt-3 grid gap-3 md:grid-cols-3">
+                    <article
+                        v-for="card in summaryCards"
+                        :key="card.label"
+                        class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
+                    >
+                        <p class="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{{ card.label }}</p>
+                        <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ card.hint }}</p>
+                    </article>
                 </div>
             </section>
 
-            <section class="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
-                <section class="min-w-0 rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+            <section class="grid items-start gap-4 2xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
+                <section class="min-w-0 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Peta Lokasi</p>
-                            <h3 class="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Titik kantor dan radius presensi</h3>
+                            <h3 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Titik kantor dan radius presensi</h3>
                             <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
                                 Sesuaikan posisi kantor langsung dari peta agar koordinat lebih akurat.
                             </p>
                         </div>
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
                             Radius: {{ normalizeRadius(form.radius_meters) }} meter
                         </div>
                     </div>
 
-                    <div v-if="!hasMapsKey" class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                    <div v-if="!hasMapsKey" class="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                         Google Maps belum aktif. Isi `VITE_GOOGLE_MAPS_API_KEY` di `.env`, lalu jalankan ulang Vite.
                     </div>
 
                     <div v-else class="mt-6 relative">
-                        <div ref="mapContainerRef" class="h-[26rem] w-full rounded-[24px] border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900" />
-                        <div v-if="mapLoading" class="absolute inset-0 grid place-items-center rounded-[24px] bg-white/70 text-sm text-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
+                        <div ref="mapContainerRef" class="h-[20rem] w-full rounded-lg border border-slate-200 bg-slate-100 md:h-[24rem] dark:border-slate-800 dark:bg-slate-900" />
+                        <div v-if="mapLoading" class="absolute inset-0 grid place-items-center rounded-lg bg-white/70 text-sm text-slate-700 dark:bg-slate-950/70 dark:text-slate-200">
                             Memuat Google Maps...
                         </div>
                     </div>
@@ -426,38 +418,21 @@ onBeforeUnmount(() => {
                     <p v-if="mapError" class="mt-3 text-sm text-rose-600 dark:text-rose-300">{{ mapError }}</p>
 
                     <div class="mt-6 grid gap-4 md:grid-cols-2">
-                        <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
+                        <div class="rounded-lg bg-slate-50 p-4 dark:bg-slate-900/80">
                             <p class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Latitude</p>
                             <p class="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ currentLatitude }}</p>
                         </div>
-                        <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
+                        <div class="rounded-lg bg-slate-50 p-4 dark:bg-slate-900/80">
                             <p class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Longitude</p>
                             <p class="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{{ currentLongitude }}</p>
                         </div>
                     </div>
                 </section>
 
-                <div class="min-w-0 self-start space-y-6 xl:sticky xl:top-28">
-                    <section class="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
-                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Preview</p>
-                        <h3 class="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Ringkasan aktif</h3>
-                        <div class="mt-5 space-y-3">
-                            <div class="rounded-2xl bg-slate-950 px-4 py-4 text-white dark:bg-slate-900">
-                                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Jam operasional</p>
-                                <p class="mt-2 text-2xl font-semibold">{{ form.check_in_time || '--:--' }} - {{ form.check_out_time || '--:--' }}</p>
-                            </div>
-                            <div class="rounded-2xl border border-dashed border-slate-200 px-4 py-4 dark:border-slate-700">
-                                <p class="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Titik kantor</p>
-                                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                                    {{ currentLatitude }}, {{ currentLongitude }}
-                                </p>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="rounded-[28px] border border-white/70 bg-white/85 p-6 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/80">
+                <div class="min-w-0 space-y-4">
+                    <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Form Pengaturan</p>
-                        <h3 class="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">Update konfigurasi</h3>
+                        <h3 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Update konfigurasi</h3>
 
                         <form class="mt-6 space-y-4" @submit.prevent="submit">
                             <div>
@@ -496,7 +471,7 @@ onBeforeUnmount(() => {
                             <button
                                 type="submit"
                                 :disabled="form.processing"
-                                class="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
+                                class="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
                             >
                                 {{ form.processing ? 'Menyimpan...' : 'Simpan Pengaturan' }}
                             </button>

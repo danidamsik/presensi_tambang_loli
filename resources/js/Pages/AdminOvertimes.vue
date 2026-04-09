@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     filters: {
@@ -34,6 +34,8 @@ const form = reactive({
     status: props.filters.status ?? 'all',
     employee_id: props.filters.employee_id ?? '',
 });
+
+let filterDebounceTimeoutId = null;
 
 const statusClass = (status) => {
     if (status === 'Approved') return 'bg-green-100 text-green-700';
@@ -71,6 +73,7 @@ const applyFilter = () => {
         employee_id: form.employee_id || null,
     }, {
         preserveState: true,
+        preserveScroll: true,
         replace: true,
     });
 };
@@ -78,8 +81,26 @@ const applyFilter = () => {
 const resetFilter = () => {
     form.status = 'all';
     form.employee_id = '';
-    applyFilter();
 };
+
+watch(
+    () => [form.date_from, form.date_to, form.status, form.employee_id],
+    () => {
+        if (filterDebounceTimeoutId) {
+            clearTimeout(filterDebounceTimeoutId);
+        }
+
+        filterDebounceTimeoutId = setTimeout(() => {
+            applyFilter();
+        }, 300);
+    },
+);
+
+onBeforeUnmount(() => {
+    if (filterDebounceTimeoutId) {
+        clearTimeout(filterDebounceTimeoutId);
+    }
+});
 
 const processOvertime = (id, action) => {
     if (action === 'reject' && !window.confirm('Tolak pengajuan lembur ini?')) {
@@ -105,13 +126,12 @@ const processOvertime = (id, action) => {
     <AuthenticatedLayout>
         <template #header>
             <div class="space-y-1">
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Monitoring & Approval Lembur</h2>
-                <p class="text-sm text-gray-500">Validasi pengajuan lembur dan pantau realisasi jam lembur karyawan.</p>
+                <h2 class="text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">Monitoring & Approval Lembur</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Validasi pengajuan lembur dan pantau realisasi jam lembur karyawan.</p>
             </div>
         </template>
 
-        <div class="py-8">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="space-y-4">
                 <div v-if="flashSuccess" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
                     {{ flashSuccess }}
                 </div>
@@ -119,7 +139,7 @@ const processOvertime = (id, action) => {
                     {{ flashError }}
                 </div>
 
-                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                         <p class="text-xs text-gray-500">Total Pengajuan</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.totalRequests }}</p>
@@ -142,7 +162,7 @@ const processOvertime = (id, action) => {
                     </div>
                 </div>
 
-                <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+                <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500">Dari Tanggal</label>
@@ -170,10 +190,7 @@ const processOvertime = (id, action) => {
                                 </option>
                             </select>
                         </div>
-                        <div class="flex items-end gap-2">
-                            <button type="button" class="rounded-md bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800" @click="applyFilter">
-                                Terapkan
-                            </button>
+                        <div class="flex items-end">
                             <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50" @click="resetFilter">
                                 Reset
                             </button>
@@ -181,7 +198,7 @@ const processOvertime = (id, action) => {
                     </div>
                 </div>
 
-                <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+                <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead class="text-left text-gray-500 border-b border-gray-100">
@@ -254,7 +271,6 @@ const processOvertime = (id, action) => {
                         />
                     </div>
                 </div>
-            </div>
         </div>
     </AuthenticatedLayout>
 </template>
