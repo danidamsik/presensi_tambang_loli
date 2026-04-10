@@ -104,27 +104,20 @@ onBeforeUnmount(() => {
     <Head title="Laporan Lengkap" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="space-y-1">
-                <h2 class="text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">Laporan Lengkap</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Ringkasan performa presensi dan lembur dengan export CSV.</p>
-            </div>
-        </template>
-
         <div class="space-y-4">
                 <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500">Dari Tanggal</label>
-                            <input v-model="form.date_from" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                            <input v-model="form.date_from" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">Sampai Tanggal</label>
-                            <input v-model="form.date_to" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                            <input v-model="form.date_to" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">Karyawan</label>
-                            <select v-model="form.employee_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                            <select v-model="form.employee_id" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                 <option value="">Semua Karyawan</option>
                                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                                     {{ employee.full_name }} ({{ employee.id_number }})
@@ -132,18 +125,18 @@ onBeforeUnmount(() => {
                             </select>
                         </div>
                         <div class="flex items-end gap-2 md:col-span-2">
-                            <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50" @click="resetFilter">
+                            <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
                                 Reset
                             </button>
                             <a
                                 :href="route('admin.reports.attendance.csv', { date_from: form.date_from, date_to: form.date_to, employee_id: form.employee_id || null })"
-                                class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100"
+                                class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
                             >
                                 Export Presensi CSV
                             </a>
                             <a
                                 :href="route('admin.reports.overtime.csv', { date_from: form.date_from, date_to: form.date_to, employee_id: form.employee_id || null })"
-                                class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-100"
+                                class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                             >
                                 Export Lembur CSV
                             </a>
@@ -174,10 +167,10 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="grid items-start grid-cols-1 xl:grid-cols-2 gap-4">
-                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                <div class="grid items-stretch grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div class="flex h-[32rem] min-h-0 flex-col bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                         <h3 class="text-lg font-semibold text-gray-900">Rekap Presensi per Karyawan</h3>
-                        <div class="mt-4 overflow-x-auto">
+                        <div class="mt-4 min-h-0 flex-1 overflow-auto pe-1">
                             <table class="min-w-full text-sm">
                                 <thead class="text-left text-gray-500 border-b border-gray-100">
                                     <tr>
@@ -207,9 +200,9 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                    <div class="flex h-[32rem] min-h-0 flex-col bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                         <h3 class="text-lg font-semibold text-gray-900">Rekap Lembur per Karyawan</h3>
-                        <div class="mt-4 overflow-x-auto">
+                        <div class="mt-4 min-h-0 flex-1 overflow-auto pe-1">
                             <table class="min-w-full text-sm">
                                 <thead class="text-left text-gray-500 border-b border-gray-100">
                                     <tr>
@@ -240,10 +233,10 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <div class="grid items-start grid-cols-1 xl:grid-cols-2 gap-4">
-                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                <div class="grid items-stretch grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div class="flex h-[32rem] min-h-0 flex-col bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                         <h3 class="text-lg font-semibold text-gray-900">Detail Presensi (100 terbaru)</h3>
-                        <div class="mt-4 overflow-x-auto">
+                        <div class="mt-4 min-h-0 flex-1 overflow-auto pe-1">
                             <table class="min-w-full text-sm">
                                 <thead class="text-left text-gray-500 border-b border-gray-100">
                                     <tr>
@@ -268,9 +261,9 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+                    <div class="flex h-[32rem] min-h-0 flex-col bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                         <h3 class="text-lg font-semibold text-gray-900">Detail Lembur (100 terbaru)</h3>
-                        <div class="mt-4 overflow-x-auto">
+                        <div class="mt-4 min-h-0 flex-1 overflow-auto pe-1">
                             <table class="min-w-full text-sm">
                                 <thead class="text-left text-gray-500 border-b border-gray-100">
                                     <tr>

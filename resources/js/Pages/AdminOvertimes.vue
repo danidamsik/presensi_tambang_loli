@@ -1,7 +1,9 @@
 <script setup>
+import { useGlobalConfirm } from '@/composables/useGlobalConfirm';
+import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
+import { onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     filters: {
@@ -22,11 +24,10 @@ const props = defineProps({
     },
 });
 
-const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success ?? null);
-const flashError = computed(() => page.props.flash?.error ?? null);
 const actionLoadingId = ref(null);
 const actionLoadingType = ref(null);
+const confirm = useGlobalConfirm();
+const notify = useGlobalNotify();
 
 const form = reactive({
     date_from: props.filters.date_from,
@@ -38,9 +39,9 @@ const form = reactive({
 let filterDebounceTimeoutId = null;
 
 const statusClass = (status) => {
-    if (status === 'Approved') return 'bg-green-100 text-green-700';
-    if (status === 'Rejected') return 'bg-red-100 text-red-700';
-    return 'bg-amber-100 text-amber-700';
+    if (status === 'Approved') return 'bg-green-100 text-green-700 dark:bg-emerald-500/10 dark:text-emerald-300';
+    if (status === 'Rejected') return 'bg-red-100 text-red-700 dark:bg-rose-500/10 dark:text-rose-300';
+    return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 };
 
 const formatDate = (value) => {
@@ -102,9 +103,19 @@ onBeforeUnmount(() => {
     }
 });
 
-const processOvertime = (id, action) => {
-    if (action === 'reject' && !window.confirm('Tolak pengajuan lembur ini?')) {
-        return;
+const processOvertime = async (id, action) => {
+    if (action === 'reject') {
+        const shouldReject = await confirm({
+            title: 'Tolak Pengajuan Lembur?',
+            message: 'Pengajuan ini akan ditandai sebagai ditolak.',
+            confirmText: 'Ya, Tolak',
+            cancelText: 'Batal',
+            variant: 'danger',
+        });
+
+        if (!shouldReject) {
+            return;
+        }
     }
 
     actionLoadingId.value = id;
@@ -112,6 +123,18 @@ const processOvertime = (id, action) => {
 
     router.patch(route(`admin.overtimes.${action}`, id), {}, {
         preserveScroll: true,
+        onSuccess: () => {
+            const message = action === 'approve'
+                ? 'Pengajuan lembur berhasil disetujui.'
+                : 'Pengajuan lembur berhasil ditolak.';
+            notify.success(message);
+        },
+        onError: () => {
+            const message = action === 'approve'
+                ? 'Gagal menyetujui pengajuan lembur.'
+                : 'Gagal menolak pengajuan lembur.';
+            notify.error(message);
+        },
         onFinish: () => {
             actionLoadingId.value = null;
             actionLoadingType.value = null;
@@ -124,21 +147,7 @@ const processOvertime = (id, action) => {
     <Head title="Monitoring & Approval Lembur" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="space-y-1">
-                <h2 class="text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">Monitoring & Approval Lembur</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Validasi pengajuan lembur dan pantau realisasi jam lembur karyawan.</p>
-            </div>
-        </template>
-
         <div class="space-y-4">
-                <div v-if="flashSuccess" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                    {{ flashSuccess }}
-                </div>
-                <div v-if="flashError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    {{ flashError }}
-                </div>
-
                 <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                         <p class="text-xs text-gray-500">Total Pengajuan</p>
@@ -166,15 +175,15 @@ const processOvertime = (id, action) => {
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500">Dari Tanggal</label>
-                            <input v-model="form.date_from" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                            <input v-model="form.date_from" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">Sampai Tanggal</label>
-                            <input v-model="form.date_to" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                            <input v-model="form.date_to" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">Status</label>
-                            <select v-model="form.status" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                            <select v-model="form.status" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                 <option value="all">Semua</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Approved">Approved</option>
@@ -183,7 +192,7 @@ const processOvertime = (id, action) => {
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">Karyawan</label>
-                            <select v-model="form.employee_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                            <select v-model="form.employee_id" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                 <option value="">Semua Karyawan</option>
                                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                                     {{ employee.full_name }} ({{ employee.id_number }})
@@ -191,7 +200,7 @@ const processOvertime = (id, action) => {
                             </select>
                         </div>
                         <div class="flex items-end">
-                            <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50" @click="resetFilter">
+                            <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
                                 Reset
                             </button>
                         </div>
@@ -232,7 +241,7 @@ const processOvertime = (id, action) => {
                                         <div v-if="overtime.approval_status === 'Pending'" class="flex items-center gap-2">
                                             <button
                                                 type="button"
-                                                class="rounded-md bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-60"
+                                                class="rounded-md bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
                                                 :disabled="actionLoadingId === overtime.id"
                                                 @click="processOvertime(overtime.id, 'approve')"
                                             >
@@ -241,7 +250,7 @@ const processOvertime = (id, action) => {
                                             </button>
                                             <button
                                                 type="button"
-                                                class="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60"
+                                                class="rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60 dark:bg-rose-600 dark:hover:bg-rose-500"
                                                 :disabled="actionLoadingId === overtime.id"
                                                 @click="processOvertime(overtime.id, 'reject')"
                                             >
@@ -264,8 +273,8 @@ const processOvertime = (id, action) => {
                             v-for="(link, index) in overtimes.links"
                             :key="index"
                             :disabled="!link.url || link.active"
-                            class="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
-                            :class="link.active ? 'border-slate-900 bg-slate-900 text-white' : 'border-gray-300 hover:bg-gray-50'"
+                            class="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"
+                            :class="link.active ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900' : 'border-gray-300 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'"
                             @click="router.visit(link.url, { preserveScroll: true, preserveState: true })"
                             v-html="link.label"
                         />
