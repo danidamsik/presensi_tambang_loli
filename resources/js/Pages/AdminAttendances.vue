@@ -1,7 +1,8 @@
 <script setup>
+import Modal from '@/Components/Modal.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, reactive, watch } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
+import { onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     filters: {
@@ -22,10 +23,6 @@ const props = defineProps({
     },
 });
 
-const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success ?? null);
-const flashError = computed(() => page.props.flash?.error ?? null);
-
 const form = reactive({
     date_from: props.filters.date_from,
     date_to: props.filters.date_to,
@@ -33,6 +30,10 @@ const form = reactive({
 });
 
 let filterDebounceTimeoutId = null;
+const showPhotoModal = ref(false);
+const selectedPhotoSrc = ref('');
+const selectedPhotoTitle = ref('');
+const selectedPhotoMeta = ref('');
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -72,6 +73,26 @@ const resetFilter = () => {
     form.employee_id = '';
 };
 
+const openPhotoModal = (attendance, type) => {
+    const src = type === 'in' ? attendance.clock_in_photo : attendance.clock_out_photo;
+
+    if (!src) {
+        return;
+    }
+
+    selectedPhotoSrc.value = src;
+    selectedPhotoTitle.value = type === 'in' ? 'Foto Clock In' : 'Foto Clock Out';
+    selectedPhotoMeta.value = `${attendance.employee_name} • ${formatDate(attendance.date)}`;
+    showPhotoModal.value = true;
+};
+
+const closePhotoModal = () => {
+    showPhotoModal.value = false;
+    selectedPhotoSrc.value = '';
+    selectedPhotoTitle.value = '';
+    selectedPhotoMeta.value = '';
+};
+
 watch(
     () => [form.date_from, form.date_to, form.employee_id],
     () => {
@@ -96,21 +117,7 @@ onBeforeUnmount(() => {
     <Head title="Monitoring Presensi" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="space-y-1">
-                <h2 class="text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">Monitoring Presensi</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400">Pantau data absensi masuk dan pulang seluruh karyawan.</p>
-            </div>
-        </template>
-
         <div class="space-y-4">
-                <div v-if="flashSuccess" class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-                    {{ flashSuccess }}
-                </div>
-                <div v-if="flashError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                    {{ flashError }}
-                </div>
-
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
                         <p class="text-xs text-gray-500">Total Record</p>
@@ -134,15 +141,15 @@ onBeforeUnmount(() => {
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500">Dari Tanggal</label>
-                            <input v-model="form.date_from" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                            <input v-model="form.date_from" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">Sampai Tanggal</label>
-                            <input v-model="form.date_to" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm" />
+                            <input v-model="form.date_to" type="date" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500">Karyawan</label>
-                            <select v-model="form.employee_id" class="mt-1 w-full rounded-md border-gray-300 text-sm">
+                            <select v-model="form.employee_id" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                 <option value="">Semua Karyawan</option>
                                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                                     {{ employee.full_name }} ({{ employee.id_number }})
@@ -150,7 +157,7 @@ onBeforeUnmount(() => {
                             </select>
                         </div>
                         <div class="flex items-end">
-                            <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50" @click="resetFilter">
+                            <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
                                 Reset
                             </button>
                         </div>
@@ -184,9 +191,24 @@ onBeforeUnmount(() => {
                                         <p class="truncate max-w-[220px]" :title="attendance.clock_out_location ?? '-'">Out: {{ attendance.clock_out_location ?? '-' }}</p>
                                     </td>
                                     <td class="py-3 pe-4">
-                                        <div class="flex flex-col gap-1">
-                                            <a v-if="attendance.clock_in_photo" :href="attendance.clock_in_photo" target="_blank" class="text-blue-600 hover:underline">Foto In</a>
-                                            <a v-if="attendance.clock_out_photo" :href="attendance.clock_out_photo" target="_blank" class="text-blue-600 hover:underline">Foto Out</a>
+                                        <div class="flex flex-col gap-2">
+                                            <button
+                                                v-if="attendance.clock_in_photo"
+                                                type="button"
+                                                class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                @click="openPhotoModal(attendance, 'in')"
+                                            >
+                                                Lihat Foto In
+                                            </button>
+                                            <button
+                                                v-if="attendance.clock_out_photo"
+                                                type="button"
+                                                class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                @click="openPhotoModal(attendance, 'out')"
+                                            >
+                                                Lihat Foto Out
+                                            </button>
+                                            <span v-if="!attendance.clock_in_photo && !attendance.clock_out_photo" class="text-xs text-gray-500">-</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -202,13 +224,40 @@ onBeforeUnmount(() => {
                             v-for="(link, index) in attendances.links"
                             :key="index"
                             :disabled="!link.url || link.active"
-                            class="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50"
-                            :class="link.active ? 'border-slate-900 bg-slate-900 text-white' : 'border-gray-300 hover:bg-gray-50'"
+                            class="rounded-md border px-3 py-1.5 text-sm disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"
+                            :class="link.active ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900' : 'border-gray-300 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'"
                             @click="router.visit(link.url, { preserveScroll: true, preserveState: true })"
                             v-html="link.label"
                         />
                     </div>
                 </div>
+
+                <Modal :show="showPhotoModal" max-width="4xl" @close="closePhotoModal">
+                    <div class="p-4 sm:p-6">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ selectedPhotoTitle }}</h3>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">{{ selectedPhotoMeta }}</p>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                @click="closePhotoModal"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+
+                        <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                            <img
+                                v-if="selectedPhotoSrc"
+                                :src="selectedPhotoSrc"
+                                :alt="selectedPhotoTitle"
+                                class="max-h-[70vh] w-full object-contain"
+                            />
+                        </div>
+                    </div>
+                </Modal>
         </div>
     </AuthenticatedLayout>
 </template>

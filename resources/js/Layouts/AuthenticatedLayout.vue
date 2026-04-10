@@ -152,8 +152,8 @@ onBeforeUnmount(() => {
                         :href="route(link.name)"
                         class="block rounded-lg px-3 py-2 text-sm font-medium transition"
                         :class="route().current(link.name)
-                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
+                            ? 'bg-slate-900 text-white dark:bg-amber-500/15 dark:text-amber-200'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-slate-50'"
                         @click="closeNavigationDropdown"
                     >
                         {{ link.label }}
@@ -250,8 +250,8 @@ onBeforeUnmount(() => {
                                 :href="route(link.name)"
                                 class="block rounded-lg px-3 py-2 text-sm font-medium transition"
                                 :class="route().current(link.name)
-                                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
+                                    ? 'bg-slate-900 text-white dark:bg-amber-500/15 dark:text-amber-200'
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-slate-50'"
                                 @click="closeNavigationDropdown"
                             >
                                 {{ link.label }}
@@ -313,7 +313,7 @@ onBeforeUnmount(() => {
                                     :href="route(link.name)"
                                     class="inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out"
                                     :class="route().current(link.name)
-                                        ? 'border-amber-400 text-gray-900 focus:border-amber-700 dark:text-slate-100'
+                                        ? 'border-amber-400 bg-amber-50 text-amber-700 focus:border-amber-700 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-200'
                                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 focus:border-gray-300 focus:text-gray-700 dark:text-slate-400 dark:hover:text-slate-100'"
                                 >
                                     {{ link.label }}
@@ -388,7 +388,7 @@ onBeforeUnmount(() => {
                             :href="route(link.name)"
                             class="block w-full border-l-4 py-2 pe-4 ps-3 text-start text-base font-medium transition duration-150 ease-in-out"
                             :class="route().current(link.name)
-                                ? 'border-amber-400 bg-amber-50 text-amber-700 focus:border-amber-700 focus:bg-amber-100 focus:text-amber-800'
+                                ? 'border-amber-400 bg-amber-50 text-amber-700 focus:border-amber-700 focus:bg-amber-100 focus:text-amber-800 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-200 dark:focus:border-amber-400 dark:focus:bg-amber-500/15 dark:focus:text-amber-100'
                                 : 'border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 focus:border-gray-300 focus:bg-gray-50 focus:text-gray-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
                             @click="closeNavigationDropdown"
                         >

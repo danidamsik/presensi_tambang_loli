@@ -1,6 +1,8 @@
 <script setup>
+import { useGlobalConfirm } from '@/composables/useGlobalConfirm';
+import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -11,10 +13,6 @@ const props = defineProps({
     attendanceToday: {
         type: Object,
         required: true,
-    },
-    setting: {
-        type: Object,
-        default: null,
     },
     recentAttendances: {
         type: Array,
@@ -30,19 +28,10 @@ const props = defineProps({
     },
 });
 
-const page = usePage();
 const actionLoadingId = ref(null);
 const actionLoadingType = ref(null);
-
-const flashSuccess = computed(() => page.props.flash?.success ?? null);
-const flashError = computed(() => page.props.flash?.error ?? null);
-
-const todayLabel = new Intl.DateTimeFormat('id-ID', {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-}).format(new Date());
+const confirm = useGlobalConfirm();
+const notify = useGlobalNotify();
 
 const attendanceRate = computed(() => {
     if (!props.summary.totalEmployees) {
@@ -50,18 +39,6 @@ const attendanceRate = computed(() => {
     }
 
     return Math.round((props.summary.presentEmployeesToday / props.summary.totalEmployees) * 100);
-});
-
-const attendanceRateTone = computed(() => {
-    if (attendanceRate.value >= 85) {
-        return 'Siap operasional';
-    }
-
-    if (attendanceRate.value >= 60) {
-        return 'Perlu dipantau';
-    }
-
-    return 'Butuh perhatian';
 });
 
 const summaryCards = computed(() => [
@@ -122,29 +99,6 @@ const overtimeHighlights = computed(() => [
     },
 ]);
 
-const quickActions = [
-    {
-        label: 'Kelola Karyawan',
-        description: 'Tambah atau rapikan akun pegawai',
-        routeName: 'admin.employees.index',
-    },
-    {
-        label: 'Cek Presensi',
-        description: 'Tinjau catatan kehadiran terbaru',
-        routeName: 'admin.attendances.index',
-    },
-    {
-        label: 'Approval Lembur',
-        description: 'Masuk ke antrean approval admin',
-        routeName: 'admin.overtimes.index',
-    },
-    {
-        label: 'Atur Sistem',
-        description: 'Update radius dan jam kerja',
-        routeName: 'admin.settings.index',
-    },
-];
-
 const formatDate = (value) => {
     if (!value) {
         return '-';
@@ -183,9 +137,19 @@ const statusClass = (status) => {
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 };
 
-const processOvertime = (id, action) => {
-    if (action === 'reject' && !window.confirm('Tolak pengajuan lembur ini?')) {
-        return;
+const processOvertime = async (id, action) => {
+    if (action === 'reject') {
+        const shouldReject = await confirm({
+            title: 'Tolak Pengajuan Lembur?',
+            message: 'Pengajuan ini akan ditandai sebagai ditolak.',
+            confirmText: 'Ya, Tolak',
+            cancelText: 'Batal',
+            variant: 'danger',
+        });
+
+        if (!shouldReject) {
+            return;
+        }
     }
 
     actionLoadingId.value = id;
@@ -193,6 +157,18 @@ const processOvertime = (id, action) => {
 
     router.patch(route(`admin.overtimes.${action}`, id), {}, {
         preserveScroll: true,
+        onSuccess: () => {
+            const message = action === 'approve'
+                ? 'Pengajuan lembur berhasil disetujui.'
+                : 'Pengajuan lembur berhasil ditolak.';
+            notify.success(message);
+        },
+        onError: () => {
+            const message = action === 'approve'
+                ? 'Gagal menyetujui pengajuan lembur.'
+                : 'Gagal menolak pengajuan lembur.';
+            notify.error(message);
+        },
         onFinish: () => {
             actionLoadingId.value = null;
             actionLoadingType.value = null;
@@ -205,91 +181,21 @@ const processOvertime = (id, action) => {
     <Head title="Dashboard Admin" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Dashboard Admin</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Ringkasan presensi, pengaturan, dan lembur hari ini.</p>
-                </div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">
-                    <p>{{ todayLabel }}</p>
-                    <p class="font-medium text-slate-700 dark:text-slate-300">{{ attendanceRateTone }}</p>
-                </div>
-            </div>
-        </template>
-
         <div class="space-y-4">
-            <div v-if="flashSuccess" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                {{ flashSuccess }}
-            </div>
-            <div v-if="flashError" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                {{ flashError }}
-            </div>
+            <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Utama</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Nilai utama untuk memantau kondisi operasional hari ini.</p>
 
-            <section class="grid items-start gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-                <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                    <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Utama</h2>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Nilai utama untuk memantau kondisi operasional hari ini.</p>
-
-                    <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <article
-                            v-for="card in summaryCards"
-                            :key="card.label"
-                            class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
-                        >
-                            <p class="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{{ card.label }}</p>
-                            <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
-                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ card.hint }}</p>
-                        </article>
-                    </div>
-                </div>
-
-                <div class="grid gap-4">
-                    <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Aksi Cepat</h2>
-                            <Link
-                                :href="route('admin.settings.index')"
-                                class="inline-flex items-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                            >
-                                Buka Pengaturan
-                            </Link>
-                        </div>
-                        <div class="mt-3 grid gap-2">
-                            <Link
-                                v-for="action in quickActions"
-                                :key="action.routeName"
-                                :href="route(action.routeName)"
-                                class="rounded-lg border border-slate-200 px-3 py-3 text-sm transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-                            >
-                                <p class="font-semibold text-slate-900 dark:text-slate-100">{{ action.label }}</p>
-                                <p class="mt-1 text-slate-500 dark:text-slate-400">{{ action.description }}</p>
-                            </Link>
-                        </div>
-                    </section>
-
-                    <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                        <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Pengaturan Sistem</h2>
-                        <div v-if="setting" class="mt-3 grid gap-2 sm:grid-cols-2">
-                            <div class="rounded-lg bg-slate-50 px-3 py-3 text-sm dark:bg-slate-800/60">
-                                <p class="text-slate-500 dark:text-slate-400">Radius Presensi</p>
-                                <p class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ setting.radius_meters }} m</p>
-                            </div>
-                            <div class="rounded-lg bg-slate-50 px-3 py-3 text-sm dark:bg-slate-800/60">
-                                <p class="text-slate-500 dark:text-slate-400">Jam Operasional</p>
-                                <p class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{{ formatTime(setting.check_in_time) }} - {{ formatTime(setting.check_out_time) }}</p>
-                            </div>
-                            <div class="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                                Lat: {{ setting.latitude ?? '-' }}
-                            </div>
-                            <div class="rounded-lg border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
-                                Lng: {{ setting.longitude ?? '-' }}
-                            </div>
-                        </div>
-                        <p v-else class="mt-3 rounded-lg border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                            Pengaturan sistem belum tersedia.
-                        </p>
-                    </section>
+                <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <article
+                        v-for="card in summaryCards"
+                        :key="card.label"
+                        class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
+                    >
+                        <p class="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{{ card.label }}</p>
+                        <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ card.hint }}</p>
+                    </article>
                 </div>
             </section>
 
@@ -337,8 +243,8 @@ const processOvertime = (id, action) => {
                 </div>
             </section>
 
-            <section class="grid items-start gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)]">
-                <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <section class="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.95fr)]">
+                <div class="flex h-[32rem] min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Presensi Terakhir</h3>
                         <Link
@@ -349,7 +255,7 @@ const processOvertime = (id, action) => {
                         </Link>
                     </div>
 
-                    <div class="mt-3 overflow-x-auto">
+                    <div class="mt-3 min-h-0 flex-1 overflow-auto pe-1">
                         <table class="min-w-full text-sm">
                             <thead class="border-b border-slate-200 text-left text-slate-500 dark:border-slate-700 dark:text-slate-400">
                                 <tr>
@@ -382,7 +288,7 @@ const processOvertime = (id, action) => {
                     </div>
                 </div>
 
-                <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div class="flex h-[32rem] min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex items-center justify-between gap-2">
                         <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Lembur Pending</h3>
                         <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
@@ -390,7 +296,7 @@ const processOvertime = (id, action) => {
                         </span>
                     </div>
 
-                    <div v-if="pendingOvertimes.length > 0" class="mt-3 max-h-[32rem] space-y-2 overflow-y-auto pe-1">
+                    <div v-if="pendingOvertimes.length > 0" class="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pe-1">
                         <article
                             v-for="overtime in pendingOvertimes"
                             :key="overtime.id"
@@ -412,7 +318,7 @@ const processOvertime = (id, action) => {
                             <div class="mt-3 grid grid-cols-2 gap-2">
                                 <button
                                     type="button"
-                                    class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-600 dark:hover:bg-emerald-500"
                                     :disabled="actionLoadingId === overtime.id"
                                     @click="processOvertime(overtime.id, 'approve')"
                                 >
@@ -421,7 +327,7 @@ const processOvertime = (id, action) => {
                                 </button>
                                 <button
                                     type="button"
-                                    class="inline-flex items-center justify-center rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    class="inline-flex items-center justify-center rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-rose-600 dark:hover:bg-rose-500"
                                     :disabled="actionLoadingId === overtime.id"
                                     @click="processOvertime(overtime.id, 'reject')"
                                 >
@@ -432,7 +338,7 @@ const processOvertime = (id, action) => {
                         </article>
                     </div>
 
-                    <div v-else class="mt-3 rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    <div v-else class="mt-3 flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
                         Tidak ada pengajuan lembur yang menunggu approval.
                     </div>
                 </div>

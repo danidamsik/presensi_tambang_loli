@@ -1,7 +1,9 @@
 <script setup>
+import { useGlobalConfirm } from '@/composables/useGlobalConfirm';
+import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
-import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -10,26 +12,17 @@ const props = defineProps({
     summary: { type: Object, required: true },
 });
 
-const page = usePage();
 const search = ref(props.filters.q ?? '');
 const editingEmployee = ref(null);
-const showCreateModal = ref(false);
-
-const flashSuccess = computed(() => page.props.flash?.success ?? null);
-const flashError = computed(() => page.props.flash?.error ?? null);
+const showEmployeeModal = ref(false);
+const confirm = useGlobalConfirm();
+const notify = useGlobalNotify();
 const hasActiveFilter = computed(() => search.value.trim().length > 0);
 const totalFilteredEmployees = computed(() => props.employees.total ?? props.employees.data.length);
+const isEditMode = computed(() => editingEmployee.value !== null);
 let searchDebounceTimeoutId = null;
 
-const createForm = useForm({
-    id_number: '',
-    full_name: '',
-    email: '',
-    password: '',
-    password_confirmation: '',
-});
-
-const editForm = useForm({
+const employeeForm = useForm({
     id_number: '',
     full_name: '',
     email: '',
@@ -87,54 +80,92 @@ const resetFilter = () => {
 };
 
 const openCreateModal = () => {
-    createForm.clearErrors();
-    showCreateModal.value = true;
+    editingEmployee.value = null;
+    employeeForm.reset();
+    employeeForm.clearErrors();
+    showEmployeeModal.value = true;
 };
 
-const closeCreateModal = () => {
-    showCreateModal.value = false;
-    createForm.reset();
-    createForm.clearErrors();
-};
-
-const submitCreate = () => {
-    createForm.post(route('admin.employees.store'), {
-        preserveScroll: true,
-        onSuccess: () => closeCreateModal(),
-    });
+const closeEmployeeModal = () => {
+    showEmployeeModal.value = false;
+    editingEmployee.value = null;
+    employeeForm.reset();
+    employeeForm.clearErrors();
 };
 
 const startEdit = (employee) => {
     editingEmployee.value = employee;
-    editForm.id_number = employee.id_number;
-    editForm.full_name = employee.full_name;
-    editForm.email = employee.email;
-    editForm.password = '';
-    editForm.password_confirmation = '';
+    employeeForm.id_number = employee.id_number;
+    employeeForm.full_name = employee.full_name;
+    employeeForm.email = employee.email;
+    employeeForm.password = '';
+    employeeForm.password_confirmation = '';
+    employeeForm.clearErrors();
+    showEmployeeModal.value = true;
 };
 
-const cancelEdit = () => {
-    editingEmployee.value = null;
-    editForm.reset();
-    editForm.clearErrors();
-};
+const submitEmployee = () => {
+    if (isEditMode.value && editingEmployee.value) {
+        let requestSucceeded = false;
 
-const submitEdit = () => {
-    if (!editingEmployee.value) return;
+        employeeForm.patch(route('admin.employees.update', editingEmployee.value.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                requestSucceeded = true;
+                notify.success('Data karyawan berhasil diperbarui.');
+            },
+            onError: () => {
+                notify.error('Gagal memperbarui data karyawan.');
+            },
+            onFinish: () => {
+                if (requestSucceeded) {
+                    closeEmployeeModal();
+                }
+            },
+        });
+        return;
+    }
 
-    editForm.patch(route('admin.employees.update', editingEmployee.value.id), {
+    let requestSucceeded = false;
+
+    employeeForm.post(route('admin.employees.store'), {
         preserveScroll: true,
-        onSuccess: () => cancelEdit(),
+        onSuccess: () => {
+            requestSucceeded = true;
+            notify.success('Karyawan baru berhasil ditambahkan.');
+        },
+        onError: () => {
+            notify.error('Gagal menambahkan karyawan. Periksa kembali input Anda.');
+        },
+        onFinish: () => {
+            if (requestSucceeded) {
+                closeEmployeeModal();
+            }
+        },
     });
 };
 
-const removeEmployee = (employee) => {
-    if (!window.confirm(`Hapus karyawan ${employee.full_name}?`)) {
+const removeEmployee = async (employee) => {
+    const shouldDelete = await confirm({
+        title: 'Hapus Karyawan?',
+        message: `Data akun "${employee.full_name}" akan dihapus secara permanen.`,
+        confirmText: 'Ya, Hapus',
+        cancelText: 'Batal',
+        variant: 'danger',
+    });
+
+    if (!shouldDelete) {
         return;
     }
 
     router.delete(route('admin.employees.destroy', employee.id), {
         preserveScroll: true,
+        onSuccess: () => {
+            notify.success(`Karyawan "${employee.full_name}" berhasil dihapus.`);
+        },
+        onError: () => {
+            notify.error('Gagal menghapus data karyawan.');
+        },
     });
 };
 
@@ -168,27 +199,7 @@ onBeforeUnmount(() => {
     <Head title="Kelola Karyawan" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Kelola Karyawan</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Tambah, cari, edit, dan hapus akun karyawan.</p>
-                </div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">
-                    <p>{{ hasActiveFilter ? 'Filter aktif' : 'Semua data' }}</p>
-                    <p class="font-medium text-slate-700 dark:text-slate-300">{{ totalFilteredEmployees }} akun</p>
-                </div>
-            </div>
-        </template>
-
         <div class="space-y-4">
-            <div v-if="flashSuccess" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                {{ flashSuccess }}
-            </div>
-            <div v-if="flashError" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                {{ flashError }}
-            </div>
-
             <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Akun</h2>
                 <div class="mt-3 grid gap-3 md:grid-cols-3">
@@ -216,7 +227,7 @@ onBeforeUnmount(() => {
                         </div>
                         <button
                             type="button"
-                            class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                            class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
                             @click="openCreateModal"
                         >
                             Tambah Karyawan
@@ -232,7 +243,7 @@ onBeforeUnmount(() => {
                         :class="inputClass(false)"
                         class="mt-0 lg:flex-1"
                     />
-                    <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
+                    <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
                         Reset
                     </button>
                 </div>
@@ -254,10 +265,10 @@ onBeforeUnmount(() => {
                         </div>
                         <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Dibuat: {{ formatDateTime(employee.created_at) }}</p>
                         <div class="mt-4 grid grid-cols-2 gap-3">
-                            <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
+                            <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
                                 Edit
                             </button>
-                            <button type="button" class="rounded-lg bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700" @click="removeEmployee(employee)">
+                            <button type="button" class="rounded-lg bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700 dark:bg-rose-500 dark:hover:bg-rose-400" @click="removeEmployee(employee)">
                                 Hapus
                             </button>
                         </div>
@@ -286,7 +297,7 @@ onBeforeUnmount(() => {
                                 <td class="py-4 pe-4">{{ formatDateTime(employee.created_at) }}</td>
                                 <td class="py-4 pe-4">
                                     <div class="flex items-center gap-2">
-                                        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
+                                        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" @click="startEdit(employee)">
                                             Edit
                                         </button>
                                         <button type="button" class="rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20" @click="removeEmployee(employee)">
@@ -308,7 +319,7 @@ onBeforeUnmount(() => {
                         :key="index"
                         type="button"
                         :disabled="!link.url || link.active"
-                        class="inline-flex min-w-[2.75rem] items-center justify-center rounded-lg border px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+                        class="inline-flex min-w-[2.75rem] items-center justify-center rounded-lg border px-3 py-2 text-sm transition disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                         :class="link.active
                             ? 'border-slate-950 bg-slate-950 text-white dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950'
                             : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'"
@@ -318,120 +329,78 @@ onBeforeUnmount(() => {
                 </div>
             </section>
 
-            <Modal :show="showCreateModal" max-width="2xl" @close="closeCreateModal">
+            <Modal :show="showEmployeeModal" :closeable="!employeeForm.processing" max-width="2xl" @close="closeEmployeeModal">
                 <div class="p-4 sm:p-6">
                     <div class="flex items-start justify-between gap-3">
                         <div>
-                            <h3 class="text-base font-semibold text-slate-900">Tambah karyawan</h3>
-                            <p class="mt-1 text-sm text-slate-500">Isi data akun baru untuk karyawan.</p>
+                            <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+                                {{ isEditMode ? `Edit karyawan: ${editingEmployee.full_name}` : 'Tambah karyawan' }}
+                            </h3>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                                {{ isEditMode ? 'Perbarui data akun karyawan.' : 'Isi data akun baru untuk karyawan.' }}
+                            </p>
                         </div>
                         <button
                             type="button"
-                            class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50"
-                            @click="closeCreateModal"
+                            class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                            @click="closeEmployeeModal"
                         >
                             Tutup
                         </button>
                     </div>
 
-                    <form class="mt-4 space-y-4" @submit.prevent="submitCreate">
+                    <form class="mt-4 space-y-4" @submit.prevent="submitEmployee">
                         <div>
-                            <label class="text-sm font-medium text-slate-700">ID Number</label>
-                            <input v-model="createForm.id_number" type="text" :class="inputClass(!!createForm.errors.id_number)" required />
-                            <p v-if="createForm.errors.id_number" class="mt-2 text-xs text-rose-600">{{ createForm.errors.id_number }}</p>
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">ID Number</label>
+                            <input v-model="employeeForm.id_number" type="text" :class="inputClass(!!employeeForm.errors.id_number)" required />
+                            <p v-if="employeeForm.errors.id_number" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ employeeForm.errors.id_number }}</p>
                         </div>
                         <div>
-                            <label class="text-sm font-medium text-slate-700">Nama Lengkap</label>
-                            <input v-model="createForm.full_name" type="text" :class="inputClass(!!createForm.errors.full_name)" required />
-                            <p v-if="createForm.errors.full_name" class="mt-2 text-xs text-rose-600">{{ createForm.errors.full_name }}</p>
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Nama Lengkap</label>
+                            <input v-model="employeeForm.full_name" type="text" :class="inputClass(!!employeeForm.errors.full_name)" required />
+                            <p v-if="employeeForm.errors.full_name" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ employeeForm.errors.full_name }}</p>
                         </div>
                         <div>
-                            <label class="text-sm font-medium text-slate-700">Email</label>
-                            <input v-model="createForm.email" type="email" :class="inputClass(!!createForm.errors.email)" required />
-                            <p v-if="createForm.errors.email" class="mt-2 text-xs text-rose-600">{{ createForm.errors.email }}</p>
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+                            <input v-model="employeeForm.email" type="email" :class="inputClass(!!employeeForm.errors.email)" required />
+                            <p v-if="employeeForm.errors.email" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ employeeForm.errors.email }}</p>
                         </div>
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="text-sm font-medium text-slate-700">Password</label>
-                                <input v-model="createForm.password" type="password" :class="inputClass(!!createForm.errors.password)" required />
-                                <p v-if="createForm.errors.password" class="mt-2 text-xs text-rose-600">{{ createForm.errors.password }}</p>
+                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ isEditMode ? 'Password Baru' : 'Password' }}</label>
+                                <input v-model="employeeForm.password" type="password" :class="inputClass(!!employeeForm.errors.password)" :required="!isEditMode" />
+                                <p v-if="employeeForm.errors.password" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ employeeForm.errors.password }}</p>
                             </div>
                             <div>
-                                <label class="text-sm font-medium text-slate-700">Konfirmasi Password</label>
-                                <input v-model="createForm.password_confirmation" type="password" :class="inputClass(false)" required />
+                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ isEditMode ? 'Konfirmasi Password Baru' : 'Konfirmasi Password' }}</label>
+                                <input v-model="employeeForm.password_confirmation" type="password" :class="inputClass(false)" :required="!isEditMode" />
                             </div>
                         </div>
 
                         <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                             <button
                                 type="button"
-                                class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                @click="closeCreateModal"
+                                class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                @click="closeEmployeeModal"
                             >
                                 Batal
                             </button>
                             <button
                                 type="submit"
-                                :disabled="createForm.processing"
-                                class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                :disabled="employeeForm.processing"
+                                class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
                             >
-                                {{ createForm.processing ? 'Menyimpan...' : 'Simpan Karyawan' }}
+                                <span
+                                    v-if="employeeForm.processing"
+                                    class="me-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+                                    aria-hidden="true"
+                                />
+                                {{ employeeForm.processing ? 'Menyimpan...' : (isEditMode ? 'Simpan Perubahan' : 'Simpan Karyawan') }}
                             </button>
                         </div>
                     </form>
                 </div>
             </Modal>
-
-            <section v-if="editingEmployee" class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Edit Data</p>
-                        <h3 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Edit karyawan: {{ editingEmployee.full_name }}</h3>
-                    </div>
-                    <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="cancelEdit">
-                        Tutup Panel Edit
-                    </button>
-                </div>
-
-                <form class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="submitEdit">
-                    <div>
-                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">ID Number</label>
-                        <input v-model="editForm.id_number" type="text" :class="inputClass(!!editForm.errors.id_number)" required />
-                        <p v-if="editForm.errors.id_number" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ editForm.errors.id_number }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Nama Lengkap</label>
-                        <input v-model="editForm.full_name" type="text" :class="inputClass(!!editForm.errors.full_name)" required />
-                        <p v-if="editForm.errors.full_name" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ editForm.errors.full_name }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
-                        <input v-model="editForm.email" type="email" :class="inputClass(!!editForm.errors.email)" required />
-                        <p v-if="editForm.errors.email" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ editForm.errors.email }}</p>
-                    </div>
-                    <div>
-                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Password Baru</label>
-                        <input v-model="editForm.password" type="password" :class="inputClass(!!editForm.errors.password)" />
-                        <p v-if="editForm.errors.password" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ editForm.errors.password }}</p>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Konfirmasi Password Baru</label>
-                        <input v-model="editForm.password_confirmation" type="password" :class="inputClass(false)" />
-                    </div>
-                    <div class="md:col-span-2 flex flex-col gap-3 sm:flex-row">
-                        <button
-                            type="submit"
-                            :disabled="editForm.processing"
-                            class="rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-                        >
-                            {{ editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
-                        </button>
-                        <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="cancelEdit">
-                            Batal
-                        </button>
-                    </div>
-                </form>
-            </section>
         </div>
     </AuthenticatedLayout>
 </template>

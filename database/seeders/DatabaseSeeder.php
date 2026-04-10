@@ -21,10 +21,10 @@ class DatabaseSeeder extends Seeder
     {
         $faker = Faker::create('id_ID');
 
-        // 1. Create Default Setting
+        // 1. Create Default Setting (Palu, Sulawesi Tengah)
         Setting::create([
-            'latitude' => '-6.200000', // Dummy Jakarta
-            'longitude' => '106.816666',
+            'latitude' => '-0.891700',
+            'longitude' => '119.870700',
             'radius_meters' => 100,
             'check_in_time' => '08:00:00',
             'check_out_time' => '17:00:00',

@@ -1,6 +1,7 @@
 <script setup>
+import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -10,13 +11,11 @@ const props = defineProps({
     },
 });
 
-const GOOGLE_MAPS_DEFAULT_LAT = -6.2;
-const GOOGLE_MAPS_DEFAULT_LNG = 106.816666;
+const GOOGLE_MAPS_DEFAULT_LAT = -0.8917;
+const GOOGLE_MAPS_DEFAULT_LNG = 119.8707;
 const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 
-const page = usePage();
-const flashSuccess = computed(() => page.props.flash?.success ?? null);
-const flashError = computed(() => page.props.flash?.error ?? null);
+const notify = useGlobalNotify();
 const hasMapsKey = computed(() => googleMapsApiKey.trim().length > 0);
 const mapContainerRef = ref(null);
 const mapLoading = ref(false);
@@ -293,6 +292,12 @@ const submit = () => {
 
     form.put(route('admin.settings.update'), {
         preserveScroll: true,
+        onSuccess: () => {
+            notify.success('Pengaturan berhasil diperbarui.');
+        },
+        onError: () => {
+            notify.error('Gagal memperbarui pengaturan. Periksa kembali input Anda.');
+        },
     });
 };
 
@@ -353,27 +358,7 @@ onBeforeUnmount(() => {
     <Head title="Pengaturan Lokasi & Jam Kerja" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Pengaturan Sistem</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">Atur koordinat kantor, radius presensi, dan jam kerja.</p>
-                </div>
-                <div class="text-sm text-slate-500 dark:text-slate-400">
-                    <p>Lat: {{ currentLatitude }}</p>
-                    <p>Lng: {{ currentLongitude }}</p>
-                </div>
-            </div>
-        </template>
-
         <div class="space-y-4">
-            <div v-if="flashSuccess" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                {{ flashSuccess }}
-            </div>
-            <div v-if="flashError" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
-                {{ flashError }}
-            </div>
-
             <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Pengaturan</h2>
                 <div class="mt-3 grid gap-3 md:grid-cols-3">
@@ -437,13 +422,13 @@ onBeforeUnmount(() => {
                         <form class="mt-6 space-y-4" @submit.prevent="submit">
                             <div>
                                 <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Latitude Kantor</label>
-                                <input v-model="form.latitude" type="number" step="any" placeholder="-6.200000" :class="inputClass(!!form.errors.latitude)" />
+                                <input v-model="form.latitude" type="number" step="any" placeholder="-0.891700" :class="inputClass(!!form.errors.latitude)" />
                                 <p v-if="form.errors.latitude" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ form.errors.latitude }}</p>
                             </div>
 
                             <div>
                                 <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Longitude Kantor</label>
-                                <input v-model="form.longitude" type="number" step="any" placeholder="106.816666" :class="inputClass(!!form.errors.longitude)" />
+                                <input v-model="form.longitude" type="number" step="any" placeholder="119.870700" :class="inputClass(!!form.errors.longitude)" />
                                 <p v-if="form.errors.longitude" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ form.errors.longitude }}</p>
                             </div>
 
@@ -471,7 +456,7 @@ onBeforeUnmount(() => {
                             <button
                                 type="submit"
                                 :disabled="form.processing"
-                                class="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                                class="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
                             >
                                 {{ form.processing ? 'Menyimpan...' : 'Simpan Pengaturan' }}
                             </button>
