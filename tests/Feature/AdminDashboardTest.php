@@ -6,8 +6,10 @@ use App\Models\Attendance;
 use App\Models\Overtime;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\PublicFileUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -17,6 +19,8 @@ class AdminDashboardTest extends TestCase
 
     public function test_admin_can_open_dashboard_and_see_summary_data(): void
     {
+        Storage::fake('public');
+
         $admin = $this->createUser('Admin');
         $employee = $this->createUser('Employee', '1000000002', 'Budi Karyawan', 'budi@example.com');
 
@@ -60,8 +64,23 @@ class AdminDashboardTest extends TestCase
             ->where('attendanceToday.clockedIn', 1)
             ->where('attendanceToday.clockedOut', 0)
             ->where('attendanceToday.lateCheckIn', 1)
+            ->where('recentAttendances.0.clock_in_photo', PublicFileUrl::make('clock-in.jpg'))
             ->has('pendingOvertimes', 1)
             ->has('recentAttendances', 1));
+    }
+
+    public function test_authenticated_user_can_open_public_file_route(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('attendance/clock-in/test.jpg', 'fake-image');
+
+        $admin = $this->createUser('Admin', '1000000009', 'Admin Media', 'admin.media@example.com');
+
+        $response = $this->actingAs($admin)->get(route('public-files.show', [
+            'path' => 'attendance/clock-in/test.jpg',
+        ], false));
+
+        $response->assertOk();
     }
 
     public function test_employee_is_forbidden_to_access_admin_dashboard(): void

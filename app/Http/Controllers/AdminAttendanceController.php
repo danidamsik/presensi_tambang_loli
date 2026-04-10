@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\PublicFileUrl;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,8 +77,8 @@ class AdminAttendanceController extends Controller
                     'id_number' => $attendance->user?->id_number,
                     'clock_in_at' => $attendance->clock_in_at,
                     'clock_out_at' => $attendance->clock_out_at,
-                    'clock_in_photo' => $attendance->clock_in_photo,
-                    'clock_out_photo' => $attendance->clock_out_photo,
+                    'clock_in_photo' => PublicFileUrl::make($attendance->clock_in_photo),
+                    'clock_out_photo' => PublicFileUrl::make($attendance->clock_out_photo),
                     'clock_in_location' => $attendance->clock_in_location,
                     'clock_out_location' => $attendance->clock_out_location,
                 ];
