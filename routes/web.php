@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminEmployeeController;
 use App\Http\Controllers\AdminOvertimeController;
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminSettingController;
+use App\Http\Controllers\EmployeeHomeController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -47,14 +48,24 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('admin.reports.overtime.csv');
 });
 
-Route::get('/home', function () {
-    return Inertia::render('Home');
-})->middleware(['auth', 'verified'])->name('home');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/home', [EmployeeHomeController::class, 'index'])->name('home');
+    Route::post('/employee/attendance/clock-in', [EmployeeHomeController::class, 'clockIn'])
+        ->name('employee.attendance.clock-in');
+    Route::post('/employee/attendance/clock-out', [EmployeeHomeController::class, 'clockOut'])
+        ->name('employee.attendance.clock-out');
+    Route::post('/employee/overtimes', [EmployeeHomeController::class, 'storeOvertime'])
+        ->name('employee.overtimes.store');
+    Route::post('/employee/overtimes/{overtime}/start', [EmployeeHomeController::class, 'startOvertime'])
+        ->name('employee.overtimes.start');
+    Route::post('/employee/overtimes/{overtime}/finish', [EmployeeHomeController::class, 'finishOvertime'])
+        ->name('employee.overtimes.finish');
 });
 
 require __DIR__.'/auth.php';
