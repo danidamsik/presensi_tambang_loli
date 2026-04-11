@@ -1,4 +1,5 @@
 <script setup>
+import Modal from '@/Components/Modal.vue';
 import { useGlobalConfirm } from '@/composables/useGlobalConfirm';
 import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -26,6 +27,10 @@ const props = defineProps({
 
 const actionLoadingId = ref(null);
 const actionLoadingType = ref(null);
+const showPhotoModal = ref(false);
+const selectedPhotoSrc = ref('');
+const selectedPhotoTitle = ref('');
+const selectedPhotoMeta = ref('');
 const confirm = useGlobalConfirm();
 const notify = useGlobalNotify();
 
@@ -82,6 +87,36 @@ const applyFilter = () => {
 const resetFilter = () => {
     form.status = 'all';
     form.employee_id = '';
+};
+
+const openPhotoModal = (overtime, type) => {
+    const src = {
+        request: overtime.overtime_request_photo,
+        start: overtime.overtime_start_photo,
+        end: overtime.overtime_end_photo,
+    }[type];
+
+    if (!src) {
+        return;
+    }
+
+    const title = {
+        request: 'Foto Pengajuan Lembur',
+        start: 'Foto Mulai Lembur',
+        end: 'Foto Selesai Lembur',
+    }[type];
+
+    selectedPhotoSrc.value = src;
+    selectedPhotoTitle.value = title;
+    selectedPhotoMeta.value = `${overtime.employee_name} - ${formatDate(overtime.overtime_date)}`;
+    showPhotoModal.value = true;
+};
+
+const closePhotoModal = () => {
+    showPhotoModal.value = false;
+    selectedPhotoSrc.value = '';
+    selectedPhotoTitle.value = '';
+    selectedPhotoMeta.value = '';
 };
 
 watch(
@@ -216,6 +251,7 @@ const processOvertime = async (id, action) => {
                                     <th class="py-2 pe-4 font-medium">Karyawan</th>
                                     <th class="py-2 pe-4 font-medium">Rencana</th>
                                     <th class="py-2 pe-4 font-medium">Aktual</th>
+                                    <th class="py-2 pe-4 font-medium">Foto</th>
                                     <th class="py-2 pe-4 font-medium">Status</th>
                                     <th class="py-2 pe-4 font-medium">Approver</th>
                                     <th class="py-2 pe-4 font-medium">Aksi</th>
@@ -231,6 +267,35 @@ const processOvertime = async (id, action) => {
                                     </td>
                                     <td class="py-3 pe-4 whitespace-nowrap">{{ formatTime(overtime.planned_start) }} - {{ formatTime(overtime.planned_end) }}</td>
                                     <td class="py-3 pe-4 whitespace-nowrap">{{ formatTime(overtime.actual_start) }} - {{ formatTime(overtime.actual_end) }}</td>
+                                    <td class="py-3 pe-4">
+                                        <div class="flex flex-col gap-2">
+                                            <button
+                                                v-if="overtime.overtime_request_photo"
+                                                type="button"
+                                                class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                @click="openPhotoModal(overtime, 'request')"
+                                            >
+                                                Lihat Foto Pengajuan
+                                            </button>
+                                            <button
+                                                v-if="overtime.overtime_start_photo"
+                                                type="button"
+                                                class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                @click="openPhotoModal(overtime, 'start')"
+                                            >
+                                                Lihat Foto Start
+                                            </button>
+                                            <button
+                                                v-if="overtime.overtime_end_photo"
+                                                type="button"
+                                                class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                @click="openPhotoModal(overtime, 'end')"
+                                            >
+                                                Lihat Foto End
+                                            </button>
+                                            <span v-if="!overtime.overtime_request_photo && !overtime.overtime_start_photo && !overtime.overtime_end_photo" class="text-xs text-gray-500">-</span>
+                                        </div>
+                                    </td>
                                     <td class="py-3 pe-4">
                                         <span class="inline-flex rounded-full px-2 py-1 text-xs font-medium" :class="statusClass(overtime.approval_status)">
                                             {{ overtime.approval_status }}
@@ -262,7 +327,7 @@ const processOvertime = async (id, action) => {
                                     </td>
                                 </tr>
                                 <tr v-if="overtimes.data.length === 0">
-                                    <td colspan="7" class="py-4 text-center text-gray-500">Data lembur tidak ditemukan.</td>
+                                    <td colspan="8" class="py-4 text-center text-gray-500">Data lembur tidak ditemukan.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -280,6 +345,33 @@ const processOvertime = async (id, action) => {
                         />
                     </div>
                 </div>
+
+                <Modal :show="showPhotoModal" max-width="4xl" @close="closePhotoModal">
+                    <div class="p-4 sm:p-6">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ selectedPhotoTitle }}</h3>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">{{ selectedPhotoMeta }}</p>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                @click="closePhotoModal"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+
+                        <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                            <img
+                                v-if="selectedPhotoSrc"
+                                :src="selectedPhotoSrc"
+                                :alt="selectedPhotoTitle"
+                                class="max-h-[70vh] w-full object-contain"
+                            >
+                        </div>
+                    </div>
+                </Modal>
         </div>
     </AuthenticatedLayout>
 </template>

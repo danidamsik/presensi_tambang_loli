@@ -82,6 +82,7 @@ class EmployeeHomeController extends Controller
             ]);
         }
 
+        $this->assertCheckInTimeWindow($setting);
         $this->assertWithinOfficeRadius($payload['latitude'], $payload['longitude'], $setting);
 
         $attendance->fill([
@@ -117,6 +118,7 @@ class EmployeeHomeController extends Controller
             ]);
         }
 
+        $this->assertCheckOutTimeReached($setting);
         $this->assertWithinOfficeRadius($payload['latitude'], $payload['longitude'], $setting);
 
         $attendance->update([
@@ -137,6 +139,7 @@ class EmployeeHomeController extends Controller
             'planned_start' => ['required', 'date_format:H:i'],
             'planned_end' => ['required', 'date_format:H:i'],
             'reason' => ['required', 'string', 'max:1000'],
+            'request_photo' => ['required', 'string'],
         ]);
 
         if ($validated['planned_end'] <= $validated['planned_start']) {
@@ -151,6 +154,7 @@ class EmployeeHomeController extends Controller
             'planned_start' => $validated['planned_start'],
             'planned_end' => $validated['planned_end'],
             'reason' => $validated['reason'],
+            'overtime_request_photo' => $this->storeCapturedPhoto($validated['request_photo'], 'overtime/request'),
             'approval_status' => 'Pending',
             'approved_by' => null,
             'actual_start' => null,
@@ -391,6 +395,49 @@ class EmployeeHomeController extends Controller
         if ($distance > (float) $setting->radius_meters) {
             throw ValidationException::withMessages([
                 'location' => 'Lokasi Anda berada di luar radius kantor. Presensi ditolak.',
+            ]);
+        }
+    }
+
+    private function assertCheckInTimeWindow(Setting $setting): void
+    {
+        if (blank($setting->check_in_time)) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Jam masuk belum dikonfigurasi admin.',
+            ]);
+        }
+
+        $now = now();
+        $checkInAt = Carbon::parse($now->toDateString().' '.$setting->check_in_time);
+        $checkInDeadline = $checkInAt->copy()->addMinutes(20);
+
+        if ($now->lt($checkInAt)) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Absen masuk baru bisa dilakukan mulai pukul '.$checkInAt->format('H:i').' WITA.',
+            ]);
+        }
+
+        if ($now->gt($checkInDeadline)) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Absen masuk ditutup pukul '.$checkInDeadline->format('H:i').' WITA.',
+            ]);
+        }
+    }
+
+    private function assertCheckOutTimeReached(Setting $setting): void
+    {
+        if (blank($setting->check_out_time)) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Jam pulang belum dikonfigurasi admin.',
+            ]);
+        }
+
+        $now = now();
+        $checkOutAt = Carbon::parse($now->toDateString().' '.$setting->check_out_time);
+
+        if ($now->lt($checkOutAt)) {
+            throw ValidationException::withMessages([
+                'attendance' => 'Absen pulang baru bisa dilakukan mulai pukul '.$checkOutAt->format('H:i').' WITA.',
             ]);
         }
     }

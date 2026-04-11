@@ -3,7 +3,7 @@ import { usePresenceCapture } from '@/composables/usePresenceCapture';
 import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
     setting: { type: Object, required: true },
@@ -11,10 +11,98 @@ const props = defineProps({
     recentAttendances: { type: Array, required: true },
 });
 
+const getMakassarTime = () => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Makassar',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(new Date());
+
+    const hour = parts.find((part) => part.type === 'hour')?.value;
+    const minute = parts.find((part) => part.type === 'minute')?.value;
+    const second = parts.find((part) => part.type === 'second')?.value;
+
+    return hour && minute && second ? `${hour}:${minute}:${second}` : '00:00:00';
+};
+
+const timeToMinutes = (value) => {
+    const [hour, minute, second = 0] = String(value ?? '').split(':').map(Number);
+
+    return Number.isFinite(hour) && Number.isFinite(minute) && Number.isFinite(second)
+        ? (hour * 60) + minute + (second / 60)
+        : null;
+};
+
+const minutesToTime = (value) => {
+    const normalizedValue = ((value % 1440) + 1440) % 1440;
+    const hour = String(Math.floor(normalizedValue / 60)).padStart(2, '0');
+    const minute = String(normalizedValue % 60).padStart(2, '0');
+
+    return `${hour}:${minute}`;
+};
+
+const isTimeWithinRange = (current, start, end) => {
+    if (current === null || start === null || end === null) {
+        return false;
+    }
+
+    if (start <= end) {
+        return current >= start && current <= end;
+    }
+
+    return current >= start || current <= end;
+};
+
 const notify = useGlobalNotify();
 const officeReady = computed(() => props.setting.is_configured);
-const canClockIn = computed(() => !props.todayAttendance?.clock_in_at);
-const canClockOut = computed(() => Boolean(props.todayAttendance?.clock_in_at) && !props.todayAttendance?.clock_out_at);
+const currentMakassarTime = ref(getMakassarTime());
+const currentMakassarMinutes = computed(() => timeToMinutes(currentMakassarTime.value));
+const checkInStartMinutes = computed(() => timeToMinutes(props.setting.check_in_time));
+const checkInDeadlineMinutes = computed(() => checkInStartMinutes.value === null ? null : checkInStartMinutes.value + 20);
+const checkInDeadlineTime = computed(() => checkInDeadlineMinutes.value === null ? '--:--' : minutesToTime(checkInDeadlineMinutes.value));
+const hasPendingClockIn = computed(() => !props.todayAttendance?.clock_in_at);
+const hasReachedCheckInWindow = computed(() => isTimeWithinRange(currentMakassarMinutes.value, checkInStartMinutes.value, checkInDeadlineMinutes.value));
+const hasPendingClockOut = computed(() => Boolean(props.todayAttendance?.clock_in_at) && !props.todayAttendance?.clock_out_at);
+const hasReachedCheckOutTime = computed(() => Boolean(props.setting.check_out_time) && currentMakassarTime.value >= props.setting.check_out_time);
+const canClockIn = computed(() => hasPendingClockIn.value && hasReachedCheckInWindow.value);
+const canClockOut = computed(() => hasPendingClockOut.value && hasReachedCheckOutTime.value);
+const checkInAvailabilityHint = computed(() => {
+    if (!hasPendingClockIn.value) {
+        return '';
+    }
+
+    if (!props.setting.check_in_time) {
+        return 'Admin belum mengatur jam masuk.';
+    }
+
+    if (!hasReachedCheckInWindow.value) {
+        if (currentMakassarMinutes.value !== null && checkInStartMinutes.value !== null && currentMakassarMinutes.value < checkInStartMinutes.value) {
+            return `Absen masuk dibuka mulai ${props.setting.check_in_time} WITA.`;
+        }
+
+        return `Absen masuk ditutup pukul ${checkInDeadlineTime.value} WITA.`;
+    }
+
+    return '';
+});
+const checkOutAvailabilityHint = computed(() => {
+    if (!hasPendingClockOut.value) {
+        return '';
+    }
+
+    if (!props.setting.check_out_time) {
+        return 'Admin belum mengatur jam pulang.';
+    }
+
+    if (!hasReachedCheckOutTime.value) {
+        return `Absen pulang dibuka mulai ${props.setting.check_out_time} WITA.`;
+    }
+
+    return '';
+});
+let currentTimeIntervalId = null;
 
 const {
     activeAction,
@@ -86,19 +174,43 @@ const summaryCards = computed(() => [
     },
 ]);
 
-const handleClockIn = () => submitPresence({
-    actionKey: 'clock-in',
-    routeName: 'employee.attendance.clock-in',
-    successMessage: 'Absen masuk berhasil disimpan.',
-});
+const handleClockIn = () => {
+    if (!canClockIn.value) {
+        notify.error(checkInAvailabilityHint.value || 'Absen masuk belum tersedia.');
+        return;
+    }
 
-const handleClockOut = () => submitPresence({
-    actionKey: 'clock-out',
-    routeName: 'employee.attendance.clock-out',
-    successMessage: 'Absen pulang berhasil disimpan.',
+    submitPresence({
+        actionKey: 'clock-in',
+        routeName: 'employee.attendance.clock-in',
+        successMessage: 'Absen masuk berhasil disimpan.',
+    });
+};
+
+const handleClockOut = () => {
+    if (!canClockOut.value) {
+        notify.error(checkOutAvailabilityHint.value || 'Absen pulang belum tersedia.');
+        return;
+    }
+
+    submitPresence({
+        actionKey: 'clock-out',
+        routeName: 'employee.attendance.clock-out',
+        successMessage: 'Absen pulang berhasil disimpan.',
+    });
+};
+
+onMounted(() => {
+    currentTimeIntervalId = window.setInterval(() => {
+        currentMakassarTime.value = getMakassarTime();
+    }, 1000);
 });
 
 onBeforeUnmount(() => {
+    if (currentTimeIntervalId) {
+        window.clearInterval(currentTimeIntervalId);
+    }
+
     stopCamera();
 });
 </script>
@@ -207,12 +319,18 @@ onBeforeUnmount(() => {
                         </button>
                     </div>
 
-                    <div v-if="cameraError || locationError || !officeReady" class="mt-3 space-y-2">
+                    <div v-if="cameraError || locationError || !officeReady || checkInAvailabilityHint || checkOutAvailabilityHint" class="mt-3 space-y-2">
                         <p v-if="cameraError" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                             {{ cameraError }}
                         </p>
                         <p v-if="locationError" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                             {{ locationError }}
+                        </p>
+                        <p v-if="checkInAvailabilityHint" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                            {{ checkInAvailabilityHint }}
+                        </p>
+                        <p v-if="checkOutAvailabilityHint" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                            {{ checkOutAvailabilityHint }}
                         </p>
                         <p v-if="!officeReady" class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
                             Admin belum mengisi latitude dan longitude kantor, jadi validasi radius belum bisa dijalankan.
@@ -227,13 +345,23 @@ onBeforeUnmount(() => {
                         <div class="rounded-lg border border-slate-200 px-3 py-3 text-sm dark:border-slate-700">
                             <p class="text-slate-500 dark:text-slate-400">Selanjutnya</p>
                             <p class="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                                {{ canClockIn ? 'Masuk' : canClockOut ? 'Pulang' : 'Selesai' }}
+                                {{ hasPendingClockIn ? (canClockIn ? 'Masuk' : 'Menunggu Jam Masuk') : hasPendingClockOut ? (canClockOut ? 'Pulang' : 'Menunggu Jam Pulang') : 'Selesai' }}
                             </p>
                         </div>
 
                         <div class="rounded-lg bg-slate-100 px-3 py-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                             Jadwal kerja:
                             <span class="font-semibold">{{ props.setting.check_in_time ?? '--:--' }} - {{ props.setting.check_out_time ?? '--:--' }}</span>
+                        </div>
+
+                        <div class="rounded-lg bg-slate-100 px-3 py-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            Batas absen masuk:
+                            <span class="font-semibold">{{ props.setting.check_in_time ?? '--:--' }} - {{ checkInDeadlineTime }} WITA</span>
+                        </div>
+
+                        <div class="rounded-lg bg-slate-100 px-3 py-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            Jam sekarang:
+                            <span class="font-semibold">{{ currentMakassarTime }} WITA</span>
                         </div>
 
                         <div class="rounded-lg bg-slate-100 px-3 py-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">

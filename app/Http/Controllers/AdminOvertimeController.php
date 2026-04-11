@@ -95,6 +95,7 @@ class AdminOvertimeController extends Controller
                     'planned_start' => $overtime->planned_start,
                     'planned_end' => $overtime->planned_end,
                     'reason' => $overtime->reason,
+                    'overtime_request_photo' => PublicFileUrl::make($overtime->overtime_request_photo),
                     'approval_status' => $overtime->approval_status,
                     'approved_by' => $overtime->approver?->full_name,
                     'actual_start' => $overtime->actual_start,

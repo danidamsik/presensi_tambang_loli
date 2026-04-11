@@ -201,21 +201,6 @@ onBeforeUnmount(() => {
     <AuthenticatedLayout>
         <div class="space-y-4">
             <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Akun</h2>
-                <div class="mt-3 grid gap-3 md:grid-cols-3">
-                    <article
-                        v-for="card in summaryCards"
-                        :key="card.label"
-                        class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
-                    >
-                        <p class="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{{ card.label }}</p>
-                        <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
-                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ card.hint }}</p>
-                    </article>
-                </div>
-            </section>
-
-            <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Daftar Data</p>

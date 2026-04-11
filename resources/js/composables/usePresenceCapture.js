@@ -127,6 +127,7 @@ export const usePresenceCapture = ({ notify, officeReady }) => {
         context.drawImage(videoRef.value, 0, 0, width, height);
         capturedPhoto.value = canvas.toDataURL('image/jpeg', 0.92);
         captureTimestamp.value = new Date().toLocaleTimeString('id-ID', {
+            timeZone: 'Asia/Makassar',
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
@@ -190,6 +191,7 @@ export const usePresenceCapture = ({ notify, officeReady }) => {
         locationLoading,
         startCamera,
         stopCamera,
+        captureSnapshot,
         submitPresence,
         ensureLocation,
         videoRef,
