@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Overtime;
 use App\Models\User;
+use App\Support\PublicFileUrl;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,8 +99,8 @@ class AdminOvertimeController extends Controller
                     'approved_by' => $overtime->approver?->full_name,
                     'actual_start' => $overtime->actual_start,
                     'actual_end' => $overtime->actual_end,
-                    'overtime_start_photo' => $overtime->overtime_start_photo,
-                    'overtime_end_photo' => $overtime->overtime_end_photo,
+                    'overtime_start_photo' => PublicFileUrl::make($overtime->overtime_start_photo),
+                    'overtime_end_photo' => PublicFileUrl::make($overtime->overtime_end_photo),
                 ];
             }),
         ]);

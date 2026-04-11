@@ -7,6 +7,7 @@ use App\Http\Controllers\AdminOvertimeController;
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminSettingController;
 use App\Http\Controllers\EmployeeHomeController;
+use App\Http\Controllers\PublicFileController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/files/public', [PublicFileController::class, 'show'])->name('public-files.show');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -56,6 +58,10 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/home', [EmployeeHomeController::class, 'index'])->name('home');
+    Route::get('/employee/attendance', [EmployeeHomeController::class, 'attendance'])
+        ->name('employee.attendance.index');
+    Route::get('/employee/overtimes', [EmployeeHomeController::class, 'overtimes'])
+        ->name('employee.overtimes.index');
     Route::post('/employee/attendance/clock-in', [EmployeeHomeController::class, 'clockIn'])
         ->name('employee.attendance.clock-in');
     Route::post('/employee/attendance/clock-out', [EmployeeHomeController::class, 'clockOut'])

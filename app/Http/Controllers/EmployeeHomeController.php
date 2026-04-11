@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Overtime;
 use App\Models\Setting;
+use App\Models\User;
+use App\Support\PublicFileUrl;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,89 +20,48 @@ class EmployeeHomeController extends Controller
 {
     public function index(Request $request): Response|RedirectResponse
     {
-        if ($request->user()?->role === 'Admin') {
-            return redirect()->route('dashboard');
+        if ($redirect = $this->redirectAdminToDashboard($request)) {
+            return $redirect;
         }
 
         $user = $request->user();
-        $today = Carbon::today()->toDateString();
-        $setting = Setting::query()->latest('id')->first();
-        $todayAttendance = Attendance::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $today)
-            ->first();
-
-        $approvedTodayOvertimes = Overtime::query()
-            ->where('user_id', $user->id)
-            ->whereDate('overtime_date', $today)
-            ->where('approval_status', 'Approved')
-            ->orderBy('planned_start')
-            ->get();
-
-        $recentAttendances = Attendance::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('date')
-            ->limit(7)
-            ->get();
-
-        $recentOvertimes = Overtime::query()
-            ->with('approver:id,full_name')
-            ->where('user_id', $user->id)
-            ->orderByDesc('overtime_date')
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get();
 
         return Inertia::render('Home', [
-            'setting' => [
-                'latitude' => $setting?->latitude,
-                'longitude' => $setting?->longitude,
-                'radius_meters' => $setting?->radius_meters ?? 100,
-                'check_in_time' => $setting?->check_in_time ? substr($setting->check_in_time, 0, 5) : null,
-                'check_out_time' => $setting?->check_out_time ? substr($setting->check_out_time, 0, 5) : null,
-                'is_configured' => filled($setting?->latitude) && filled($setting?->longitude),
-            ],
-            'todayAttendance' => $todayAttendance ? [
-                'id' => $todayAttendance->id,
-                'date' => $todayAttendance->date,
-                'clock_in_at' => $todayAttendance->clock_in_at,
-                'clock_out_at' => $todayAttendance->clock_out_at,
-                'clock_in_photo' => $todayAttendance->clock_in_photo ? Storage::disk('public')->url($todayAttendance->clock_in_photo) : null,
-                'clock_out_photo' => $todayAttendance->clock_out_photo ? Storage::disk('public')->url($todayAttendance->clock_out_photo) : null,
-                'clock_in_location' => $todayAttendance->clock_in_location,
-                'clock_out_location' => $todayAttendance->clock_out_location,
-            ] : null,
-            'approvedTodayOvertimes' => $approvedTodayOvertimes->map(fn (Overtime $overtime): array => [
-                'id' => $overtime->id,
-                'overtime_date' => $overtime->overtime_date,
-                'planned_start' => $overtime->planned_start,
-                'planned_end' => $overtime->planned_end,
-                'reason' => $overtime->reason,
-                'approval_status' => $overtime->approval_status,
-                'actual_start' => $overtime->actual_start,
-                'actual_end' => $overtime->actual_end,
-                'overtime_start_photo' => $overtime->overtime_start_photo ? Storage::disk('public')->url($overtime->overtime_start_photo) : null,
-                'overtime_end_photo' => $overtime->overtime_end_photo ? Storage::disk('public')->url($overtime->overtime_end_photo) : null,
-            ]),
-            'recentAttendances' => $recentAttendances->map(fn (Attendance $attendance): array => [
-                'id' => $attendance->id,
-                'date' => $attendance->date,
-                'clock_in_at' => $attendance->clock_in_at,
-                'clock_out_at' => $attendance->clock_out_at,
-                'clock_in_location' => $attendance->clock_in_location,
-                'clock_out_location' => $attendance->clock_out_location,
-            ]),
-            'recentOvertimes' => $recentOvertimes->map(fn (Overtime $overtime): array => [
-                'id' => $overtime->id,
-                'overtime_date' => $overtime->overtime_date,
-                'planned_start' => $overtime->planned_start,
-                'planned_end' => $overtime->planned_end,
-                'reason' => $overtime->reason,
-                'approval_status' => $overtime->approval_status,
-                'approved_by' => $overtime->approver?->full_name,
-                'actual_start' => $overtime->actual_start,
-                'actual_end' => $overtime->actual_end,
-            ]),
+            'setting' => $this->serializeSetting(),
+            'todayAttendance' => $this->serializeTodayAttendance($this->findTodayAttendance($user)),
+            'approvedTodayOvertimes' => $this->serializeApprovedTodayOvertimes($user),
+            'recentAttendances' => $this->serializeRecentAttendances($user, 3),
+            'recentOvertimes' => $this->serializeRecentOvertimes($user, 3),
+        ]);
+    }
+
+    public function attendance(Request $request): Response|RedirectResponse
+    {
+        if ($redirect = $this->redirectAdminToDashboard($request)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+
+        return Inertia::render('EmployeeAttendance', [
+            'setting' => $this->serializeSetting(),
+            'todayAttendance' => $this->serializeTodayAttendance($this->findTodayAttendance($user)),
+            'recentAttendances' => $this->serializeRecentAttendances($user, 7),
+        ]);
+    }
+
+    public function overtimes(Request $request): Response|RedirectResponse
+    {
+        if ($redirect = $this->redirectAdminToDashboard($request)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+
+        return Inertia::render('EmployeeOvertimes', [
+            'setting' => $this->serializeSetting(),
+            'approvedTodayOvertimes' => $this->serializeApprovedTodayOvertimes($user),
+            'recentOvertimes' => $this->serializeRecentOvertimes($user, 10),
         ]);
     }
 
@@ -279,13 +240,124 @@ class EmployeeHomeController extends Controller
         return back()->with('success', 'Absen selesai lembur berhasil disimpan.');
     }
 
-    private function ensureEmployee(Request $request)
+    private function ensureEmployee(Request $request): User
     {
         $user = $request->user();
 
         abort_unless($user && $user->role === 'Employee', 403);
 
         return $user;
+    }
+
+    private function redirectAdminToDashboard(Request $request): ?RedirectResponse
+    {
+        return $request->user()?->role === 'Admin'
+            ? redirect()->route('dashboard')
+            : null;
+    }
+
+    private function serializeSetting(): array
+    {
+        $setting = Setting::query()->latest('id')->first();
+
+        return [
+            'latitude' => $setting?->latitude,
+            'longitude' => $setting?->longitude,
+            'radius_meters' => $setting?->radius_meters ?? 100,
+            'check_in_time' => $setting?->check_in_time ? substr($setting->check_in_time, 0, 5) : null,
+            'check_out_time' => $setting?->check_out_time ? substr($setting->check_out_time, 0, 5) : null,
+            'is_configured' => filled($setting?->latitude) && filled($setting?->longitude),
+        ];
+    }
+
+    private function findTodayAttendance(User $user): ?Attendance
+    {
+        return Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', Carbon::today()->toDateString())
+            ->first();
+    }
+
+    private function serializeTodayAttendance(?Attendance $attendance): ?array
+    {
+        if (! $attendance) {
+            return null;
+        }
+
+        return [
+            'id' => $attendance->id,
+            'date' => $attendance->date,
+            'clock_in_at' => $attendance->clock_in_at,
+            'clock_out_at' => $attendance->clock_out_at,
+            'clock_in_photo' => PublicFileUrl::make($attendance->clock_in_photo),
+            'clock_out_photo' => PublicFileUrl::make($attendance->clock_out_photo),
+            'clock_in_location' => $attendance->clock_in_location,
+            'clock_out_location' => $attendance->clock_out_location,
+        ];
+    }
+
+    private function serializeApprovedTodayOvertimes(User $user): array
+    {
+        return Overtime::query()
+            ->where('user_id', $user->id)
+            ->whereDate('overtime_date', Carbon::today()->toDateString())
+            ->where('approval_status', 'Approved')
+            ->orderBy('planned_start')
+            ->get()
+            ->map(fn (Overtime $overtime): array => [
+                'id' => $overtime->id,
+                'overtime_date' => $overtime->overtime_date,
+                'planned_start' => $overtime->planned_start,
+                'planned_end' => $overtime->planned_end,
+                'reason' => $overtime->reason,
+                'approval_status' => $overtime->approval_status,
+                'actual_start' => $overtime->actual_start,
+                'actual_end' => $overtime->actual_end,
+                'overtime_start_photo' => PublicFileUrl::make($overtime->overtime_start_photo),
+                'overtime_end_photo' => PublicFileUrl::make($overtime->overtime_end_photo),
+            ])
+            ->all();
+    }
+
+    private function serializeRecentAttendances(User $user, int $limit): array
+    {
+        return Attendance::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('date')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Attendance $attendance): array => [
+                'id' => $attendance->id,
+                'date' => $attendance->date,
+                'clock_in_at' => $attendance->clock_in_at,
+                'clock_out_at' => $attendance->clock_out_at,
+                'clock_in_location' => $attendance->clock_in_location,
+                'clock_out_location' => $attendance->clock_out_location,
+            ])
+            ->all();
+    }
+
+    private function serializeRecentOvertimes(User $user, int $limit): array
+    {
+        return Overtime::query()
+            ->with('approver:id,full_name')
+            ->where('user_id', $user->id)
+            ->orderByDesc('overtime_date')
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Overtime $overtime): array => [
+                'id' => $overtime->id,
+                'overtime_date' => $overtime->overtime_date,
+                'planned_start' => $overtime->planned_start,
+                'planned_end' => $overtime->planned_end,
+                'reason' => $overtime->reason,
+                'approval_status' => $overtime->approval_status,
+                'approved_by' => $overtime->approver?->full_name,
+                'actual_start' => $overtime->actual_start,
+                'actual_end' => $overtime->actual_end,
+            ])
+            ->all();
     }
 
     private function validatePresencePayload(Request $request): array

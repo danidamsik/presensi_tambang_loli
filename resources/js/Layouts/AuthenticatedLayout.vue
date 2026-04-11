@@ -28,7 +28,11 @@ const navLinks = computed(() => {
         ];
     }
 
-    return [{ name: 'home', label: 'Home', description: 'Ringkasan aktivitas Anda' }];
+    return [
+        { name: 'home', label: 'Home', description: 'Ringkasan aktivitas Anda' },
+        { name: 'employee.attendance.index', label: 'Presensi', description: 'Absen masuk dan pulang' },
+        { name: 'employee.overtimes.index', label: 'Lembur', description: 'Pengajuan dan presensi lembur' },
+    ];
 });
 
 const currentNav = computed(() => navLinks.value.find((link) => route().current(link.name)) ?? navLinks.value[0]);
@@ -294,143 +298,142 @@ onBeforeUnmount(() => {
         </div>
     </div>
 
-    <div v-else>
-        <div class="min-h-screen bg-gray-100 transition-colors dark:bg-slate-900">
-            <nav class="border-b border-gray-100 bg-white transition-colors dark:border-slate-700 dark:bg-slate-900">
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-16 justify-between">
-                        <div class="flex">
-                            <div class="flex shrink-0 items-center">
-                                <Link :href="route(homeRouteName)">
-                                    <ApplicationLogo class="block h-9 w-auto fill-current text-gray-800 dark:text-slate-100" />
-                                </Link>
-                            </div>
+    <div v-else class="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+        <div class="min-h-screen">
+            <aside
+                class="hidden border-r border-slate-200 bg-white px-4 py-6 xl:fixed xl:inset-y-0 xl:left-0 xl:z-20 xl:flex xl:h-screen xl:w-64 xl:flex-col xl:overflow-y-auto dark:border-slate-800 dark:bg-slate-900"
+            >
+                <Link :href="route(homeRouteName)" class="inline-flex">
+                    <ApplicationLogo class="max-w-full" />
+                </Link>
 
-                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <Link
-                                    v-for="link in navLinks"
-                                    :key="link.name"
-                                    :href="route(link.name)"
-                                    class="inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out"
-                                    :class="route().current(link.name)
-                                        ? 'border-amber-400 bg-amber-50 text-amber-700 focus:border-amber-700 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-200'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 focus:border-gray-300 focus:text-gray-700 dark:text-slate-400 dark:hover:text-slate-100'"
-                                >
-                                    {{ link.label }}
-                                </Link>
-                            </div>
-                        </div>
+                <nav class="mt-6 space-y-1">
+                    <Link
+                        v-for="link in navLinks"
+                        :key="link.name"
+                        :href="route(link.name)"
+                        class="block rounded-lg px-3 py-2 text-sm font-medium transition"
+                        :class="route().current(link.name)
+                            ? 'bg-slate-900 text-white dark:bg-amber-500/15 dark:text-amber-200'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-slate-50'"
+                        @click="closeNavigationDropdown"
+                    >
+                        {{ link.label }}
+                    </Link>
+                </nav>
 
-                        <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <ThemeToggle compact class="me-3" />
+                <div class="mt-auto border-t border-slate-200 pt-4 dark:border-slate-800">
+                    <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ displayName }}</p>
+                    <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ $page.props.auth.user.email }}</p>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <ThemeToggle class="justify-center" />
+                        <Link
+                            :href="route('profile.edit')"
+                            class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                            Profil
+                        </Link>
+                    </div>
+                </div>
+            </aside>
 
-                            <div class="relative ms-3">
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <span class="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition ease-in-out duration-150 hover:text-gray-700 focus:outline-none dark:bg-slate-900 dark:text-slate-300 dark:hover:text-slate-100"
-                                            >
-                                                {{ displayName }}
-
-                                                <svg class="ms-2 -me-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink :href="route('profile.edit')">Profile</DropdownLink>
-                                        <DropdownLink :href="route('logout')" method="post" as="button">Log Out</DropdownLink>
-                                    </template>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <ThemeToggle compact class="me-2" />
+            <div class="flex min-h-screen flex-col xl:pl-64">
+                <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+                    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+                        <div class="flex min-w-0 items-center gap-2">
                             <button
-                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:focus:bg-slate-800 dark:focus:text-slate-100"
+                                type="button"
+                                class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 xl:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                                 @click="toggleNavigationDropdown"
                             >
-                                <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                     <path
-                                        :class="{ hidden: showingNavigationDropdown, 'inline-flex': !showingNavigationDropdown }"
+                                        :d="showingNavigationDropdown ? 'M6 6L18 18M6 18L18 6' : 'M4 7H20M4 12H20M4 17H14'"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        :class="{ hidden: !showingNavigationDropdown, 'inline-flex': showingNavigationDropdown }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"
                                     />
                                 </svg>
                             </button>
-                        </div>
-                    </div>
-                </div>
 
-                <div :class="{ block: showingNavigationDropdown, hidden: !showingNavigationDropdown }" class="sm:hidden">
-                    <div class="space-y-1 pb-3 pt-2">
-                        <Link
-                            v-for="link in navLinks"
-                            :key="link.name"
-                            :href="route(link.name)"
-                            class="block w-full border-l-4 py-2 pe-4 ps-3 text-start text-base font-medium transition duration-150 ease-in-out"
-                            :class="route().current(link.name)
-                                ? 'border-amber-400 bg-amber-50 text-amber-700 focus:border-amber-700 focus:bg-amber-100 focus:text-amber-800 dark:border-amber-500 dark:bg-amber-500/10 dark:text-amber-200 dark:focus:border-amber-400 dark:focus:bg-amber-500/15 dark:focus:text-amber-100'
-                                : 'border-transparent text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 focus:border-gray-300 focus:bg-gray-50 focus:text-gray-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
-                            @click="closeNavigationDropdown"
-                        >
-                            {{ link.label }}
-                        </Link>
-                    </div>
-
-                    <div class="border-t border-gray-200 pb-1 pt-4 dark:border-slate-700">
-                        <div class="px-4">
-                            <div class="text-base font-medium text-gray-800 dark:text-slate-100">{{ displayName }}</div>
-                            <div class="text-sm font-medium text-gray-500 dark:text-slate-400">{{ $page.props.auth.user.email }}</div>
+                            <p class="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{{ currentNav?.label }}</p>
                         </div>
 
-                        <div class="mt-3 space-y-1">
+                        <div class="flex items-center gap-2">
+                            <ThemeToggle compact />
+                            <span class="hidden max-w-[12rem] truncate text-sm text-slate-600 sm:block dark:text-slate-300">{{ displayName }}</span>
+
+                            <Dropdown align="right" width="56">
+                                <template #trigger>
+                                    <span class="inline-flex">
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                                        >
+                                            <span class="text-xs font-semibold">{{ userInitials }}</span>
+                                        </button>
+                                    </span>
+                                </template>
+
+                                <template #content>
+                                    <div class="px-4 py-3 text-xs uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">Akun</div>
+                                    <DropdownLink :href="route('profile.edit')">Profile</DropdownLink>
+                                    <DropdownLink :href="route('logout')" method="post" as="button">Log Out</DropdownLink>
+                                </template>
+                            </Dropdown>
+                        </div>
+                    </div>
+
+                    <div v-if="showingNavigationDropdown" class="border-t border-slate-200 bg-white px-4 py-3 xl:hidden dark:border-slate-800 dark:bg-slate-950">
+                        <div class="space-y-1">
+                            <Link
+                                v-for="link in navLinks"
+                                :key="link.name"
+                                :href="route(link.name)"
+                                class="block rounded-lg px-3 py-2 text-sm font-medium transition"
+                                :class="route().current(link.name)
+                                    ? 'bg-slate-900 text-white dark:bg-amber-500/15 dark:text-amber-200'
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-slate-50'"
+                                @click="closeNavigationDropdown"
+                            >
+                                {{ link.label }}
+                            </Link>
+                        </div>
+
+                        <div class="mt-3 grid grid-cols-2 gap-2">
                             <Link
                                 :href="route('profile.edit')"
-                                class="block w-full border-l-4 border-transparent py-2 pe-4 ps-3 text-start text-base font-medium text-gray-600 transition duration-150 ease-in-out hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                                class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                                @click="closeNavigationDropdown"
                             >
-                                Profile
+                                Profil
                             </Link>
                             <Link
                                 :href="route('logout')"
                                 method="post"
                                 as="button"
-                                class="block w-full border-l-4 border-transparent py-2 pe-4 ps-3 text-start text-base font-medium text-gray-600 transition duration-150 ease-in-out hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                                class="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white dark:bg-slate-100 dark:text-slate-900"
                             >
                                 Log Out
                             </Link>
                         </div>
                     </div>
-                </div>
-            </nav>
+                </header>
 
-            <header v-if="$slots.header" class="bg-white shadow transition-colors dark:border-b dark:border-slate-700 dark:bg-slate-900">
-                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                    <slot name="header" />
-                </div>
-            </header>
+                <main class="flex-1 px-4 py-4 sm:px-6 lg:px-8">
+                    <div class="mx-auto flex w-full max-w-7xl flex-col gap-4">
+                        <section
+                            v-if="$slots.header"
+                            class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                        >
+                            <slot name="header" />
+                        </section>
 
-            <main>
-                <slot />
-            </main>
+                        <slot />
+                    </div>
+                </main>
+            </div>
         </div>
     </div>
 </template>

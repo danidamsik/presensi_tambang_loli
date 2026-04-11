@@ -1,4 +1,5 @@
 <script setup>
+import Modal from '@/Components/Modal.vue';
 import { useGlobalConfirm } from '@/composables/useGlobalConfirm';
 import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -30,6 +31,10 @@ const props = defineProps({
 
 const actionLoadingId = ref(null);
 const actionLoadingType = ref(null);
+const showPhotoModal = ref(false);
+const selectedPhotoSrc = ref('');
+const selectedPhotoTitle = ref('');
+const selectedPhotoMeta = ref('');
 const confirm = useGlobalConfirm();
 const notify = useGlobalNotify();
 
@@ -135,6 +140,26 @@ const statusClass = (status) => {
     }
 
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+};
+
+const openPhotoModal = (attendance, type) => {
+    const src = type === 'in' ? attendance.clock_in_photo : attendance.clock_out_photo;
+
+    if (!src) {
+        return;
+    }
+
+    selectedPhotoSrc.value = src;
+    selectedPhotoTitle.value = type === 'in' ? 'Foto Clock In' : 'Foto Clock Out';
+    selectedPhotoMeta.value = `${attendance.employee_name} • ${formatDate(attendance.date)}`;
+    showPhotoModal.value = true;
+};
+
+const closePhotoModal = () => {
+    showPhotoModal.value = false;
+    selectedPhotoSrc.value = '';
+    selectedPhotoTitle.value = '';
+    selectedPhotoMeta.value = '';
 };
 
 const processOvertime = async (id, action) => {
@@ -264,6 +289,7 @@ const processOvertime = async (id, action) => {
                                     <th class="py-2 pe-3 font-medium">Clock In</th>
                                     <th class="py-2 pe-3 font-medium">Clock Out</th>
                                     <th class="py-2 pe-3 font-medium">Lokasi</th>
+                                    <th class="py-2 pe-3 font-medium">Foto</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-200 text-slate-700 dark:divide-slate-800 dark:text-slate-300">
@@ -279,9 +305,30 @@ const processOvertime = async (id, action) => {
                                         <p class="max-w-[220px] truncate" :title="attendance.clock_in_location ?? '-'">In: {{ attendance.clock_in_location ?? '-' }}</p>
                                         <p class="max-w-[220px] truncate" :title="attendance.clock_out_location ?? '-'">Out: {{ attendance.clock_out_location ?? '-' }}</p>
                                     </td>
+                                    <td class="py-3 pe-3">
+                                        <div class="flex flex-col gap-2">
+                                            <button
+                                                v-if="attendance.clock_in_photo"
+                                                type="button"
+                                                class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                @click="openPhotoModal(attendance, 'in')"
+                                            >
+                                                Foto In
+                                            </button>
+                                            <button
+                                                v-if="attendance.clock_out_photo"
+                                                type="button"
+                                                class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                @click="openPhotoModal(attendance, 'out')"
+                                            >
+                                                Foto Out
+                                            </button>
+                                            <span v-if="!attendance.clock_in_photo && !attendance.clock_out_photo" class="text-xs text-slate-500 dark:text-slate-400">-</span>
+                                        </div>
+                                    </td>
                                 </tr>
                                 <tr v-if="recentAttendances.length === 0">
-                                    <td colspan="5" class="py-6 text-center text-slate-500 dark:text-slate-400">Belum ada data presensi.</td>
+                                    <td colspan="6" class="py-6 text-center text-slate-500 dark:text-slate-400">Belum ada data presensi.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -385,6 +432,33 @@ const processOvertime = async (id, action) => {
                     </table>
                 </div>
             </section>
+
+            <Modal :show="showPhotoModal" max-width="4xl" @close="closePhotoModal">
+                <div class="p-4 sm:p-6">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ selectedPhotoTitle }}</h3>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">{{ selectedPhotoMeta }}</p>
+                        </div>
+                        <button
+                            type="button"
+                            class="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                            @click="closePhotoModal"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+
+                    <div class="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                        <img
+                            v-if="selectedPhotoSrc"
+                            :src="selectedPhotoSrc"
+                            :alt="selectedPhotoTitle"
+                            class="max-h-[70vh] w-full object-contain"
+                        />
+                    </div>
+                </div>
+            </Modal>
         </div>
     </AuthenticatedLayout>
 </template>

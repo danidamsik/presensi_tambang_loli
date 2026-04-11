@@ -16,7 +16,7 @@ class EmployeeModuleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_employee_can_access_home_submit_attendance_and_handle_overtime_flow(): void
+    public function test_employee_can_access_dashboard_attendance_and_overtime_pages_then_handle_their_flows(): void
     {
         Storage::fake('public');
 
@@ -33,6 +33,14 @@ class EmployeeModuleTest extends TestCase
         $homeResponse = $this->actingAs($employee)->get(route('home'));
         $homeResponse->assertOk();
         $homeResponse->assertInertia(fn (Assert $page) => $page->component('Home'));
+
+        $attendancePageResponse = $this->actingAs($employee)->get(route('employee.attendance.index'));
+        $attendancePageResponse->assertOk();
+        $attendancePageResponse->assertInertia(fn (Assert $page) => $page->component('EmployeeAttendance'));
+
+        $overtimePageResponse = $this->actingAs($employee)->get(route('employee.overtimes.index'));
+        $overtimePageResponse->assertOk();
+        $overtimePageResponse->assertInertia(fn (Assert $page) => $page->component('EmployeeOvertimes'));
 
         $clockInResponse = $this->actingAs($employee)->post(route('employee.attendance.clock-in'), [
             'latitude' => -6.20001,
@@ -116,13 +124,13 @@ class EmployeeModuleTest extends TestCase
             'radius_meters' => 100,
         ]);
 
-        $response = $this->actingAs($employee)->from(route('home'))->post(route('employee.attendance.clock-in'), [
+        $response = $this->actingAs($employee)->from(route('employee.attendance.index'))->post(route('employee.attendance.clock-in'), [
             'latitude' => -6.210000,
             'longitude' => 106.826000,
             'photo' => $this->fakePhotoDataUrl(),
         ]);
 
-        $response->assertRedirect(route('home'));
+        $response->assertRedirect(route('employee.attendance.index'));
         $response->assertSessionHasErrors('location');
         $this->assertDatabaseCount('attendances', 0);
     }
