@@ -1,19 +1,18 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Overtime;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\PublicFileUrl;
 use Carbon\Carbon;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminDashboardController extends Controller
+class DashboardController extends Controller
 {
     public function index(): Response
     {
@@ -91,7 +90,7 @@ class AdminDashboardController extends Controller
             ->count('user_id');
         $pendingOvertimeCount = Overtime::query()->where('approval_status', 'Pending')->count();
 
-        return Inertia::render('Dashboard', [
+        return Inertia::render('Admin/Dashboard', [
             'summary' => [
                 'totalEmployees' => $totalEmployees,
                 'presentEmployeesToday' => $presentEmployeesToday,
@@ -156,35 +155,4 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    public function approve(Request $request, Overtime $overtime): RedirectResponse
-    {
-        if ($overtime->approval_status !== 'Pending') {
-            return back()->with('error', 'Pengajuan lembur sudah diproses sebelumnya.');
-        }
-
-        $overtime->update([
-            'approval_status' => 'Approved',
-            'approved_by' => $request->user()->id,
-        ]);
-
-        return back()->with('success', 'Lembur berhasil disetujui.');
-    }
-
-    public function reject(Request $request, Overtime $overtime): RedirectResponse
-    {
-        if ($overtime->approval_status !== 'Pending') {
-            return back()->with('error', 'Pengajuan lembur sudah diproses sebelumnya.');
-        }
-
-        $overtime->update([
-            'approval_status' => 'Rejected',
-            'approved_by' => $request->user()->id,
-            'actual_start' => null,
-            'overtime_start_photo' => null,
-            'actual_end' => null,
-            'overtime_end_photo' => null,
-        ]);
-
-        return back()->with('success', 'Lembur berhasil ditolak.');
-    }
 }

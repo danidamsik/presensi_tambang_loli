@@ -7,9 +7,6 @@ defineProps({
     canLogin: {
         type: Boolean,
     },
-    canRegister: {
-        type: Boolean,
-    },
     laravelVersion: {
         type: String,
         required: true,
@@ -64,16 +61,9 @@ defineProps({
                         :href="route('login')"
                         class="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl font-bold text-white uppercase tracking-widest hover:from-amber-400 hover:to-orange-400 transition-all duration-300 shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_30px_rgba(245,158,11,0.4)] transform hover:-translate-y-1"
                     >
-                        Login Karyawan
+                        Login
                     </Link>
 
-                    <Link
-                        v-if="canRegister"
-                        :href="route('register')"
-                        class="px-8 py-4 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl font-bold text-slate-700 uppercase tracking-widest hover:bg-slate-50 transition-all duration-300 shadow-md transform hover:-translate-y-1 dark:bg-slate-900/80 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
-                    >
-                        Daftar Baru
-                    </Link>
                 </template>
             </div>
         </div>

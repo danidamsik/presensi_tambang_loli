@@ -90,15 +90,6 @@ const submit = () => {
                 </PrimaryButton>
             </div>
 
-            <div class="mt-6 text-center text-sm text-slate-600 pb-2">
-                Belum punya akun?
-                <Link
-                    :href="route('register')"
-                    class="font-semibold text-amber-600 hover:text-amber-500 underline transition-colors"
-                >
-                    Daftar di sini
-                </Link>
-            </div>
         </form>
     </GuestLayout>
 </template>

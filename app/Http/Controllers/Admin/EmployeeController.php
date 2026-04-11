@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,7 +11,7 @@ use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminEmployeeController extends Controller
+class EmployeeController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -30,7 +31,7 @@ class AdminEmployeeController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return Inertia::render('AdminEmployees', [
+        return Inertia::render('Admin/Employees', [
             'filters' => [
                 'q' => $search,
             ],
@@ -88,7 +89,6 @@ class AdminEmployeeController extends Controller
                 'max:255',
                 Rule::unique('users', 'email')->ignore($employee->id),
             ],
-            'password' => ['nullable', 'confirmed', Password::defaults()],
         ]);
 
         $payload = [
@@ -96,10 +96,6 @@ class AdminEmployeeController extends Controller
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
         ];
-
-        if (! empty($validated['password'])) {
-            $payload['password'] = $validated['password'];
-        }
 
         $employee->update($payload);
 

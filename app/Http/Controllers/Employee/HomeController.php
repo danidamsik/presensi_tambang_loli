@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Employee;
 
+use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Overtime;
 use App\Models\Setting;
@@ -16,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class EmployeeHomeController extends Controller
+class HomeController extends Controller
 {
     public function index(Request $request): Response|RedirectResponse
     {
@@ -26,7 +27,7 @@ class EmployeeHomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('Home', [
+        return Inertia::render('Employee/Home', [
             'setting' => $this->serializeSetting(),
             'todayAttendance' => $this->serializeTodayAttendance($this->findTodayAttendance($user)),
             'approvedTodayOvertimes' => $this->serializeApprovedTodayOvertimes($user),
@@ -43,7 +44,7 @@ class EmployeeHomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('EmployeeAttendance', [
+        return Inertia::render('Employee/Attendance', [
             'setting' => $this->serializeSetting(),
             'todayAttendance' => $this->serializeTodayAttendance($this->findTodayAttendance($user)),
             'recentAttendances' => $this->serializeRecentAttendances($user, 7),
@@ -58,7 +59,7 @@ class EmployeeHomeController extends Controller
 
         $user = $request->user();
 
-        return Inertia::render('EmployeeOvertimes', [
+        return Inertia::render('Employee/Overtimes', [
             'setting' => $this->serializeSetting(),
             'approvedTodayOvertimes' => $this->serializeApprovedTodayOvertimes($user),
             'recentOvertimes' => $this->serializeRecentOvertimes($user, 10),

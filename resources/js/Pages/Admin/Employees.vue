@@ -98,8 +98,6 @@ const startEdit = (employee) => {
     employeeForm.id_number = employee.id_number;
     employeeForm.full_name = employee.full_name;
     employeeForm.email = employee.email;
-    employeeForm.password = '';
-    employeeForm.password_confirmation = '';
     employeeForm.clearErrors();
     showEmployeeModal.value = true;
 };
@@ -108,7 +106,11 @@ const submitEmployee = () => {
     if (isEditMode.value && editingEmployee.value) {
         let requestSucceeded = false;
 
-        employeeForm.patch(route('admin.employees.update', editingEmployee.value.id), {
+        employeeForm.transform((data) => ({
+            id_number: data.id_number,
+            full_name: data.full_name,
+            email: data.email,
+        })).patch(route('admin.employees.update', editingEmployee.value.id), {
             preserveScroll: true,
             onSuccess: () => {
                 requestSucceeded = true;
@@ -118,6 +120,8 @@ const submitEmployee = () => {
                 notify.error('Gagal memperbarui data karyawan.');
             },
             onFinish: () => {
+                employeeForm.transform((data) => data);
+
                 if (requestSucceeded) {
                     closeEmployeeModal();
                 }
@@ -350,15 +354,15 @@ onBeforeUnmount(() => {
                             <input v-model="employeeForm.email" type="email" :class="inputClass(!!employeeForm.errors.email)" required />
                             <p v-if="employeeForm.errors.email" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ employeeForm.errors.email }}</p>
                         </div>
-                        <div class="grid gap-4 sm:grid-cols-2">
+                        <div v-if="!isEditMode" class="grid gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ isEditMode ? 'Password Baru' : 'Password' }}</label>
-                                <input v-model="employeeForm.password" type="password" :class="inputClass(!!employeeForm.errors.password)" :required="!isEditMode" />
+                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Password</label>
+                                <input v-model="employeeForm.password" type="password" :class="inputClass(!!employeeForm.errors.password)" required />
                                 <p v-if="employeeForm.errors.password" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ employeeForm.errors.password }}</p>
                             </div>
                             <div>
-                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ isEditMode ? 'Konfirmasi Password Baru' : 'Konfirmasi Password' }}</label>
-                                <input v-model="employeeForm.password_confirmation" type="password" :class="inputClass(false)" :required="!isEditMode" />
+                                <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Konfirmasi Password</label>
+                                <input v-model="employeeForm.password_confirmation" type="password" :class="inputClass(false)" required />
                             </div>
                         </div>
 

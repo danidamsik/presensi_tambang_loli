@@ -20,7 +20,7 @@ class AdminModuleTest extends TestCase
 
         $indexResponse = $this->actingAs($admin)->get(route('admin.employees.index'));
         $indexResponse->assertOk();
-        $indexResponse->assertInertia(fn (Assert $page) => $page->component('AdminEmployees'));
+        $indexResponse->assertInertia(fn (Assert $page) => $page->component('Admin/Employees'));
 
         $storeResponse = $this->actingAs($admin)->post(route('admin.employees.store'), [
             'id_number' => '9988776655443322',
@@ -93,11 +93,11 @@ class AdminModuleTest extends TestCase
 
         $attendanceResponse = $this->actingAs($admin)->get(route('admin.attendances.index'));
         $attendanceResponse->assertOk();
-        $attendanceResponse->assertInertia(fn (Assert $page) => $page->component('AdminAttendances'));
+        $attendanceResponse->assertInertia(fn (Assert $page) => $page->component('Admin/Attendances'));
 
         $overtimeResponse = $this->actingAs($admin)->get(route('admin.overtimes.index'));
         $overtimeResponse->assertOk();
-        $overtimeResponse->assertInertia(fn (Assert $page) => $page->component('AdminOvertimes'));
+        $overtimeResponse->assertInertia(fn (Assert $page) => $page->component('Admin/Overtimes'));
 
         $approveResponse = $this->actingAs($admin)->patch(route('admin.overtimes.approve', $overtime));
         $approveResponse->assertRedirect();
@@ -109,7 +109,7 @@ class AdminModuleTest extends TestCase
 
         $reportResponse = $this->actingAs($admin)->get(route('admin.reports.index'));
         $reportResponse->assertOk();
-        $reportResponse->assertInertia(fn (Assert $page) => $page->component('AdminReports'));
+        $reportResponse->assertInertia(fn (Assert $page) => $page->component('Admin/Reports'));
 
         $csvAttendanceResponse = $this->actingAs($admin)->get(route('admin.reports.attendance.csv'));
         $csvAttendanceResponse->assertOk();

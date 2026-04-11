@@ -24,14 +24,17 @@ const navLinks = computed(() => {
             { name: 'admin.settings.index', label: 'Pengaturan', description: 'Lokasi kerja dan jam operasional' },
             { name: 'admin.attendances.index', label: 'Presensi', description: 'Tinjau catatan kehadiran' },
             { name: 'admin.overtimes.index', label: 'Lembur', description: 'Approval dan histori lembur' },
+            { name: 'admin.leaves.index', label: 'Izin', description: 'Approval izin dan bukti sakit' },
             { name: 'admin.reports.index', label: 'Laporan', description: 'Rekap dan ekspor data' },
         ];
     }
 
     return [
         { name: 'home', label: 'Home', description: 'Ringkasan aktivitas Anda' },
+        { name: 'profile.edit', label: 'Profil', description: 'Informasi akun dan password' },
         { name: 'employee.attendance.index', label: 'Presensi', description: 'Absen masuk dan pulang' },
         { name: 'employee.overtimes.index', label: 'Lembur', description: 'Pengajuan dan presensi lembur' },
+        { name: 'employee.leaves.index', label: 'Izin', description: 'Pengajuan izin sakit' },
     ];
 });
 

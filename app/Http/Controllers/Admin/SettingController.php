@@ -1,20 +1,21 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminSettingController extends Controller
+class SettingController extends Controller
 {
     public function index(): Response
     {
         $setting = Setting::query()->latest('id')->first();
 
-        return Inertia::render('AdminSettings', [
+        return Inertia::render('Admin/Settings', [
             'setting' => [
                 'latitude' => $setting?->latitude,
                 'longitude' => $setting?->longitude,
