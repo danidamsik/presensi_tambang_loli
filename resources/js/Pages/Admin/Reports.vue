@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { onBeforeUnmount, reactive, watch } from 'vue';
+import { onBeforeUnmount, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     filters: {
@@ -41,6 +41,7 @@ const form = reactive({
 });
 
 let filterDebounceTimeoutId = null;
+const exportingReport = ref(null);
 
 const formatDate = (value) => {
     if (!value) return '-';
@@ -78,6 +79,81 @@ const applyFilter = () => {
 
 const resetFilter = () => {
     form.employee_id = '';
+};
+
+const reportQuery = () => ({
+    date_from: form.date_from,
+    date_to: form.date_to,
+    employee_id: form.employee_id || null,
+});
+
+const fallbackFilename = (type) => {
+    const prefix = type === 'attendance' ? 'laporan-presensi' : 'laporan-lembur';
+
+    return `${prefix}-${form.date_from}-sd-${form.date_to}.csv`;
+};
+
+const extractFilename = (response, fallback) => {
+    const disposition = response.headers.get('Content-Disposition');
+
+    if (!disposition) {
+        return fallback;
+    }
+
+    const encodedFilename = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    if (encodedFilename) {
+        return decodeURIComponent(encodedFilename);
+    }
+
+    return disposition.match(/filename="?([^"]+)"?/i)?.[1] ?? fallback;
+};
+
+const triggerDownload = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 100);
+};
+
+const exportCsv = async (type) => {
+    if (exportingReport.value) {
+        return;
+    }
+
+    const routeName = type === 'attendance'
+        ? 'admin.reports.attendance.csv'
+        : 'admin.reports.overtime.csv';
+
+    exportingReport.value = type;
+
+    try {
+        const response = await fetch(route(routeName, reportQuery()), {
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'text/csv',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Export failed');
+        }
+
+        triggerDownload(
+            await response.blob(),
+            extractFilename(response, fallbackFilename(type)),
+        );
+    } catch (error) {
+        window.alert('Gagal export laporan. Silakan coba lagi.');
+    } finally {
+        exportingReport.value = null;
+    }
 };
 
 watch(
@@ -128,18 +204,38 @@ onBeforeUnmount(() => {
                             <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
                                 Reset
                             </button>
-                            <a
-                                :href="route('admin.reports.attendance.csv', { date_from: form.date_from, date_to: form.date_to, employee_id: form.employee_id || null })"
-                                class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
+                            <button
+                                type="button"
+                                class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
+                                :class="{ 'cursor-wait opacity-70': exportingReport === 'attendance' }"
+                                :disabled="exportingReport !== null"
+                                aria-label="Export presensi CSV"
+                                title="Export presensi CSV"
+                                @click="exportCsv('attendance')"
                             >
-                                Export Presensi CSV
-                            </a>
-                            <a
-                                :href="route('admin.reports.overtime.csv', { date_from: form.date_from, date_to: form.date_to, employee_id: form.employee_id || null })"
-                                class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                                <svg v-if="exportingReport === 'attendance'" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M12 3a9 9 0 1 1-8.2 5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                                </svg>
+                                <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M12 3v10m0 0 4-4m-4 4-4-4M5 17v1.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </button>
+                            <button
+                                type="button"
+                                class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                                :class="{ 'cursor-wait opacity-70': exportingReport === 'overtime' }"
+                                :disabled="exportingReport !== null"
+                                aria-label="Export lembur CSV"
+                                title="Export lembur CSV"
+                                @click="exportCsv('overtime')"
                             >
-                                Export Lembur CSV
-                            </a>
+                                <svg v-if="exportingReport === 'overtime'" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M12 3a9 9 0 1 1-8.2 5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                                </svg>
+                                <svg v-else class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path d="M12 6v6l3 2M12 3a9 9 0 1 0 9 9M19 3v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
