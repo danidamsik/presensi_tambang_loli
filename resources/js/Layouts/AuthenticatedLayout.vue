@@ -9,12 +9,12 @@ import { Link, usePage } from '@inertiajs/vue3';
 const showingNavigationDropdown = ref(false);
 const isSidebarCollapsed = ref(false);
 const page = usePage();
-const SIDEBAR_STORAGE_KEY = 'admin-sidebar-collapsed';
 let sidebarResizeTimeoutId = null;
 let sidebarResizeFrameId = null;
 
 const isAdmin = computed(() => page.props.auth?.user?.role === 'Admin');
 const homeRouteName = computed(() => (isAdmin.value ? 'dashboard' : 'home'));
+const sidebarStorageKey = computed(() => (isAdmin.value ? 'admin-sidebar-collapsed' : 'employee-sidebar-collapsed'));
 
 const navLinks = computed(() => {
     if (isAdmin.value) {
@@ -73,7 +73,7 @@ const persistSidebarState = () => {
         return;
     }
 
-    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isSidebarCollapsed.value));
+    window.localStorage.setItem(sidebarStorageKey.value, String(isSidebarCollapsed.value));
 };
 
 const emitAdminLayoutResize = () => {
@@ -118,11 +118,11 @@ const toggleDesktopSidebar = () => {
 };
 
 onMounted(() => {
-    if (typeof window === 'undefined' || !isAdmin.value) {
+    if (typeof window === 'undefined') {
         return;
     }
 
-    isSidebarCollapsed.value = window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true';
+    isSidebarCollapsed.value = window.localStorage.getItem(sidebarStorageKey.value) === 'true';
     scheduleAdminLayoutResize();
 });
 
@@ -304,6 +304,7 @@ onBeforeUnmount(() => {
     <div v-else class="min-h-screen bg-slate-100 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
         <div class="min-h-screen">
             <aside
+                v-show="!isSidebarCollapsed"
                 class="hidden border-r border-slate-200 bg-white px-4 py-6 xl:fixed xl:inset-y-0 xl:left-0 xl:z-20 xl:flex xl:h-screen xl:w-64 xl:flex-col xl:overflow-y-auto dark:border-slate-800 dark:bg-slate-900"
             >
                 <Link :href="route(homeRouteName)" class="inline-flex">
@@ -340,7 +341,10 @@ onBeforeUnmount(() => {
                 </div>
             </aside>
 
-            <div class="flex min-h-screen flex-col xl:pl-64">
+            <div
+                class="flex min-h-screen flex-col transition-[padding] duration-300"
+                :class="isSidebarCollapsed ? 'xl:pl-0' : 'xl:pl-64'"
+            >
                 <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
                     <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
                         <div class="flex min-w-0 items-center gap-2">
@@ -352,6 +356,22 @@ onBeforeUnmount(() => {
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                     <path
                                         :d="showingNavigationDropdown ? 'M6 6L18 18M6 18L18 6' : 'M4 7H20M4 12H20M4 17H14'"
+                                        stroke="currentColor"
+                                        stroke-width="1.8"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                </svg>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 xl:inline-flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                                @click="toggleDesktopSidebar"
+                            >
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <path
+                                        :d="isSidebarCollapsed ? 'M4 12H20M14 6L20 12L14 18' : 'M4 12H20M10 6L4 12L10 18'"
                                         stroke="currentColor"
                                         stroke-width="1.8"
                                         stroke-linecap="round"
