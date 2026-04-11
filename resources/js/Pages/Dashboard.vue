@@ -155,6 +155,17 @@ const openPhotoModal = (attendance, type) => {
     showPhotoModal.value = true;
 };
 
+const openOvertimeRequestPhotoModal = (overtime) => {
+    if (!overtime.overtime_request_photo) {
+        return;
+    }
+
+    selectedPhotoSrc.value = overtime.overtime_request_photo;
+    selectedPhotoTitle.value = 'Foto Pengajuan Lembur';
+    selectedPhotoMeta.value = `${overtime.employee_name} - ${formatDate(overtime.overtime_date)}`;
+    showPhotoModal.value = true;
+};
+
 const closePhotoModal = () => {
     showPhotoModal.value = false;
     selectedPhotoSrc.value = '';
@@ -362,6 +373,15 @@ const processOvertime = async (id, action) => {
                             </p>
                             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ overtime.reason ?? '-' }}</p>
 
+                            <button
+                                v-if="overtime.overtime_request_photo"
+                                type="button"
+                                class="mt-3 inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                @click="openOvertimeRequestPhotoModal(overtime)"
+                            >
+                                Lihat Foto Pengajuan
+                            </button>
+
                             <div class="mt-3 grid grid-cols-2 gap-2">
                                 <button
                                     type="button"
@@ -411,6 +431,7 @@ const processOvertime = async (id, action) => {
                                 <th class="py-2 pe-3 font-medium">Status</th>
                                 <th class="py-2 pe-3 font-medium">Rencana</th>
                                 <th class="py-2 pe-3 font-medium">Aktual</th>
+                                <th class="py-2 pe-3 font-medium">Foto</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200 text-slate-700 dark:divide-slate-800 dark:text-slate-300">
@@ -424,9 +445,20 @@ const processOvertime = async (id, action) => {
                                 </td>
                                 <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(overtime.planned_start) }} - {{ formatTime(overtime.planned_end) }}</td>
                                 <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(overtime.actual_start) }} - {{ formatTime(overtime.actual_end) }}</td>
+                                <td class="py-3 pe-3">
+                                    <button
+                                        v-if="overtime.overtime_request_photo"
+                                        type="button"
+                                        class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                        @click="openOvertimeRequestPhotoModal(overtime)"
+                                    >
+                                        Foto Pengajuan
+                                    </button>
+                                    <span v-else class="text-xs text-slate-500 dark:text-slate-400">-</span>
+                                </td>
                             </tr>
                             <tr v-if="recentOvertimes.length === 0">
-                                <td colspan="5" class="py-6 text-center text-slate-500 dark:text-slate-400">Belum ada data lembur.</td>
+                                <td colspan="6" class="py-6 text-center text-slate-500 dark:text-slate-400">Belum ada data lembur.</td>
                             </tr>
                         </tbody>
                     </table>

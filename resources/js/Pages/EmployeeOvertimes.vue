@@ -15,11 +15,27 @@ const notify = useGlobalNotify();
 const officeReady = computed(() => props.setting.is_configured);
 const nextApprovedOvertime = computed(() => props.approvedTodayOvertimes[0] ?? null);
 
+const makassarTodayIso = () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Makassar',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(new Date());
+
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+
+    return year && month && day ? `${year}-${month}-${day}` : new Date().toISOString().slice(0, 10);
+};
+
 const {
     activeAction,
     cameraError,
     cameraLoading,
     cameraReady,
+    captureSnapshot,
     captureTimestamp,
     capturedPhoto,
     currentPosition,
@@ -37,10 +53,11 @@ const {
 });
 
 const overtimeForm = useForm({
-    overtime_date: new Date().toISOString().slice(0, 10),
+    overtime_date: makassarTodayIso(),
     planned_start: '',
     planned_end: '',
     reason: '',
+    request_photo: '',
 });
 
 const formatDate = (value) => {
@@ -54,10 +71,11 @@ const formatDate = (value) => {
     }
 
     return new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Makassar',
         day: '2-digit',
         month: 'short',
         year: 'numeric',
-    }).format(new Date(year, month - 1, day));
+    }).format(new Date(Date.UTC(year, month - 1, day)));
 };
 
 const formatTime = (value) => {
@@ -105,18 +123,27 @@ const statusBadgeClass = (status) => {
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 };
 
-const submitOvertimeRequest = () => {
-    overtimeForm.post(route('employee.overtimes.store'), {
-        preserveScroll: true,
-        onSuccess: () => {
-            notify.success('Pengajuan lembur berhasil dikirim.');
-            overtimeForm.reset('planned_start', 'planned_end', 'reason');
-            overtimeForm.overtime_date = new Date().toISOString().slice(0, 10);
-        },
-        onError: (errors) => {
-            notify.error(firstErrorMessage(errors));
-        },
-    });
+const submitOvertimeRequest = async () => {
+    try {
+        await startCamera();
+        overtimeForm.request_photo = captureSnapshot();
+
+        overtimeForm.post(route('employee.overtimes.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                notify.success('Pengajuan lembur berhasil dikirim.');
+                overtimeForm.reset('planned_start', 'planned_end', 'reason', 'request_photo');
+                overtimeForm.overtime_date = makassarTodayIso();
+            },
+            onError: (errors) => {
+                notify.error(firstErrorMessage(errors));
+            },
+        });
+    } catch (error) {
+        if (error instanceof Error) {
+            notify.error(error.message);
+        }
+    }
 };
 
 const handleStartOvertime = (overtimeId) => submitPresence({
@@ -207,6 +234,11 @@ onBeforeUnmount(() => {
                             <p v-if="overtimeForm.errors.reason" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ overtimeForm.errors.reason }}</p>
                         </div>
 
+                        <p class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                            Saat pengajuan dikirim, kamera akan mengambil foto untuk bukti pengajuan lembur.
+                        </p>
+                        <p v-if="overtimeForm.errors.request_photo" class="text-xs text-rose-600 dark:text-rose-300">{{ overtimeForm.errors.request_photo }}</p>
+
                         <button
                             type="submit"
                             :disabled="overtimeForm.processing"
@@ -221,7 +253,7 @@ onBeforeUnmount(() => {
                     <div class="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Ruang Presensi Lembur</p>
-                            <h2 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Kamera dan GPS untuk mulai atau selesai lembur</h2>
+                            <h2 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Kamera dan GPS untuk pengajuan, mulai, atau selesai lembur</h2>
                         </div>
 
                         <div class="flex flex-wrap gap-2">

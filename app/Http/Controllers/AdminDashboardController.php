@@ -136,6 +136,7 @@ class AdminDashboardController extends Controller
                     'planned_start' => $overtime->planned_start,
                     'planned_end' => $overtime->planned_end,
                     'reason' => $overtime->reason,
+                    'overtime_request_photo' => PublicFileUrl::make($overtime->overtime_request_photo),
                 ];
             }),
             'recentOvertimes' => $recentOvertimes->map(function (Overtime $overtime): array {
@@ -148,6 +149,7 @@ class AdminDashboardController extends Controller
                     'planned_end' => $overtime->planned_end,
                     'actual_start' => $overtime->actual_start,
                     'actual_end' => $overtime->actual_end,
+                    'overtime_request_photo' => PublicFileUrl::make($overtime->overtime_request_photo),
                     'approved_by' => $overtime->approver?->full_name,
                 ];
             }),

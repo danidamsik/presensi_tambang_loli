@@ -15,6 +15,7 @@ class Overtime extends Model
         'planned_start',
         'planned_end',
         'reason',
+        'overtime_request_photo',
         'approval_status',
         'approved_by',
         'actual_start',
