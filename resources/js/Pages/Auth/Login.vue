@@ -85,8 +85,18 @@ const submit = () => {
                     Forgot your password?
                 </Link>
 
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Log in
+                <PrimaryButton
+                    class="ms-4"
+                    :class="{ 'cursor-wait opacity-75': form.processing }"
+                    :disabled="form.processing"
+                    :aria-busy="form.processing"
+                >
+                    <span
+                        v-if="form.processing"
+                        class="me-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/80 border-r-transparent"
+                        aria-hidden="true"
+                    />
+                    {{ form.processing ? 'Memproses...' : 'Log in' }}
                 </PrimaryButton>
             </div>
 
