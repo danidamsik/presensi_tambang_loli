@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Overtime;
 use App\Models\Setting;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,13 @@ use Tests\TestCase;
 class EmployeeModuleTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_employee_can_access_dashboard_attendance_and_overtime_pages_then_handle_their_flows(): void
     {
@@ -30,17 +38,19 @@ class EmployeeModuleTest extends TestCase
             'check_out_time' => '17:00:00',
         ]);
 
+        Carbon::setTestNow('2026-04-11 08:10:00');
+
         $homeResponse = $this->actingAs($employee)->get(route('home'));
         $homeResponse->assertOk();
-        $homeResponse->assertInertia(fn (Assert $page) => $page->component('Home'));
+        $homeResponse->assertInertia(fn (Assert $page) => $page->component('Employee/Home'));
 
         $attendancePageResponse = $this->actingAs($employee)->get(route('employee.attendance.index'));
         $attendancePageResponse->assertOk();
-        $attendancePageResponse->assertInertia(fn (Assert $page) => $page->component('EmployeeAttendance'));
+        $attendancePageResponse->assertInertia(fn (Assert $page) => $page->component('Employee/Attendance'));
 
         $overtimePageResponse = $this->actingAs($employee)->get(route('employee.overtimes.index'));
         $overtimePageResponse->assertOk();
-        $overtimePageResponse->assertInertia(fn (Assert $page) => $page->component('EmployeeOvertimes'));
+        $overtimePageResponse->assertInertia(fn (Assert $page) => $page->component('Employee/Overtimes'));
 
         $clockInResponse = $this->actingAs($employee)->post(route('employee.attendance.clock-in'), [
             'latitude' => -6.20001,
@@ -53,6 +63,8 @@ class EmployeeModuleTest extends TestCase
         $this->assertNotNull($attendance->clock_in_at);
         $this->assertSame('-6.200010,106.816010', $attendance->clock_in_location);
         Storage::disk('public')->assertExists($attendance->clock_in_photo);
+
+        Carbon::setTestNow('2026-04-11 17:05:00');
 
         $clockOutResponse = $this->actingAs($employee)->post(route('employee.attendance.clock-out'), [
             'latitude' => -6.20002,
@@ -71,6 +83,7 @@ class EmployeeModuleTest extends TestCase
             'planned_start' => '18:00',
             'planned_end' => '20:00',
             'reason' => 'Closing laporan harian.',
+            'request_photo' => $this->fakePhotoDataUrl(),
         ]);
         $overtimeRequestResponse->assertRedirect();
 
@@ -122,7 +135,10 @@ class EmployeeModuleTest extends TestCase
             'latitude' => '-6.200000',
             'longitude' => '106.816000',
             'radius_meters' => 100,
+            'check_in_time' => '08:00:00',
         ]);
+
+        Carbon::setTestNow('2026-04-11 08:10:00');
 
         $response = $this->actingAs($employee)->from(route('employee.attendance.index'))->post(route('employee.attendance.clock-in'), [
             'latitude' => -6.210000,

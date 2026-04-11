@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Overtime;
 use App\Models\User;
 use App\Support\PublicFileUrl;
@@ -11,7 +12,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminOvertimeController extends Controller
+class OvertimeController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -63,7 +64,7 @@ class AdminOvertimeController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return Inertia::render('AdminOvertimes', [
+        return Inertia::render('Admin/Overtimes', [
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,

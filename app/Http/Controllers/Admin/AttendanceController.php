@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\User;
@@ -11,7 +12,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminAttendanceController extends Controller
+class AttendanceController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -48,7 +49,7 @@ class AdminAttendanceController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return Inertia::render('AdminAttendances', [
+        return Inertia::render('Admin/Attendances', [
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,

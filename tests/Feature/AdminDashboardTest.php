@@ -57,7 +57,7 @@ class AdminDashboardTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
-            ->component('Dashboard')
+            ->component('Admin/Dashboard')
             ->where('summary.totalEmployees', 1)
             ->where('summary.presentEmployeesToday', 1)
             ->where('summary.pendingOvertimes', 1)

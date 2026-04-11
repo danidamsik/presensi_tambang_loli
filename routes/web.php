@@ -1,23 +1,33 @@
 <?php
 
-use App\Http\Controllers\AdminAttendanceController;
-use App\Http\Controllers\AdminDashboardController;
-use App\Http\Controllers\AdminEmployeeController;
-use App\Http\Controllers\AdminOvertimeController;
-use App\Http\Controllers\AdminReportController;
-use App\Http\Controllers\AdminSettingController;
-use App\Http\Controllers\EmployeeHomeController;
+use App\Http\Controllers\Admin\AttendanceController as AdminAttendanceController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\EmployeeController as AdminEmployeeController;
+use App\Http\Controllers\Admin\LeaveRequestController as AdminLeaveRequestController;
+use App\Http\Controllers\Admin\OvertimeController as AdminOvertimeController;
+use App\Http\Controllers\Admin\ReportController as AdminReportController;
+use App\Http\Controllers\Admin\SettingController as AdminSettingController;
+use App\Http\Controllers\Employee\HomeController as EmployeeHomeController;
+use App\Http\Controllers\Employee\LeaveRequestController as EmployeeLeaveRequestController;
 use App\Http\Controllers\PublicFileController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 
-Route::get('/', function () {
+Route::get('/', function (Request $request) {
+    if ($request->user()) {
+        return redirect(match ($request->user()->role) {
+            'Admin' => route('dashboard'),
+            'Employee' => route('home'),
+            default => route('dashboard'),
+        });
+    }
+
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
@@ -42,6 +52,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::patch('/admin/overtimes/{overtime}/reject', [AdminOvertimeController::class, 'reject'])
         ->name('admin.overtimes.reject');
 
+    Route::get('/admin/leaves', [AdminLeaveRequestController::class, 'index'])->name('admin.leaves.index');
+    Route::patch('/admin/leaves/{leaveRequest}/approve', [AdminLeaveRequestController::class, 'approve'])
+        ->name('admin.leaves.approve');
+    Route::patch('/admin/leaves/{leaveRequest}/reject', [AdminLeaveRequestController::class, 'reject'])
+        ->name('admin.leaves.reject');
+
     Route::get('/admin/reports', [AdminReportController::class, 'index'])->name('admin.reports.index');
     Route::get('/admin/reports/attendance.csv', [AdminReportController::class, 'attendanceCsv'])
         ->name('admin.reports.attendance.csv');
@@ -62,6 +78,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('employee.attendance.index');
     Route::get('/employee/overtimes', [EmployeeHomeController::class, 'overtimes'])
         ->name('employee.overtimes.index');
+    Route::get('/employee/leaves', [EmployeeLeaveRequestController::class, 'index'])
+        ->name('employee.leaves.index');
+    Route::post('/employee/leaves', [EmployeeLeaveRequestController::class, 'store'])
+        ->name('employee.leaves.store');
     Route::post('/employee/attendance/clock-in', [EmployeeHomeController::class, 'clockIn'])
         ->name('employee.attendance.clock-in');
     Route::post('/employee/attendance/clock-out', [EmployeeHomeController::class, 'clockOut'])

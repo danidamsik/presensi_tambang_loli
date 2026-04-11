@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Overtime;
 use App\Models\Setting;
@@ -13,7 +14,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminReportController extends Controller
+class ReportController extends Controller
 {
     public function index(Request $request): Response
     {
@@ -161,7 +162,7 @@ class AdminReportController extends Controller
                 ];
             });
 
-        return Inertia::render('AdminReports', [
+        return Inertia::render('Admin/Reports', [
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
