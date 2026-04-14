@@ -65,6 +65,12 @@ const formatTime = (value) => {
     return value.slice(0, 5);
 };
 
+const statusLabel = (status) => ({
+    Pending: 'Menunggu',
+    Approved: 'Disetujui',
+    Rejected: 'Ditolak',
+}[status] ?? status);
+
 const applyFilter = () => {
     router.get(route('admin.reports.index'), {
         date_from: form.date_from,
@@ -90,7 +96,7 @@ const reportQuery = () => ({
 const fallbackFilename = (type) => {
     const prefix = type === 'attendance' ? 'laporan-presensi' : 'laporan-lembur';
 
-    return `${prefix}-${form.date_from}-sd-${form.date_to}.csv`;
+    return `${prefix}-${form.date_from}-sd-${form.date_to}.xls`;
 };
 
 const extractFilename = (response, fallback) => {
@@ -121,14 +127,14 @@ const triggerDownload = (blob, filename) => {
     window.setTimeout(() => URL.revokeObjectURL(url), 100);
 };
 
-const exportCsv = async (type) => {
+const exportExcel = async (type) => {
     if (exportingReport.value) {
         return;
     }
 
     const routeName = type === 'attendance'
-        ? 'admin.reports.attendance.csv'
-        : 'admin.reports.overtime.csv';
+        ? 'admin.reports.attendance.excel'
+        : 'admin.reports.overtime.excel';
 
     exportingReport.value = type;
 
@@ -136,13 +142,13 @@ const exportCsv = async (type) => {
         const response = await fetch(route(routeName, reportQuery()), {
             credentials: 'same-origin',
             headers: {
-                Accept: 'text/csv',
+                Accept: 'application/vnd.ms-excel',
                 'X-Requested-With': 'XMLHttpRequest',
             },
         });
 
         if (!response.ok) {
-            throw new Error('Export failed');
+            throw new Error('Ekspor gagal');
         }
 
         triggerDownload(
@@ -202,16 +208,16 @@ onBeforeUnmount(() => {
                         </div>
                         <div class="flex items-end gap-2 md:col-span-2">
                             <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
-                                Reset
+                                Atur Ulang
                             </button>
                             <button
                                 type="button"
                                 class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/20"
                                 :class="{ 'cursor-wait opacity-70': exportingReport === 'attendance' }"
                                 :disabled="exportingReport !== null"
-                                aria-label="Export presensi CSV"
-                                title="Export presensi CSV"
-                                @click="exportCsv('attendance')"
+                                aria-label="Ekspor presensi Excel"
+                                title="Ekspor presensi Excel"
+                                @click="exportExcel('attendance')"
                             >
                                 <svg v-if="exportingReport === 'attendance'" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                     <path d="M12 3a9 9 0 1 1-8.2 5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -225,9 +231,9 @@ onBeforeUnmount(() => {
                                 class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
                                 :class="{ 'cursor-wait opacity-70': exportingReport === 'overtime' }"
                                 :disabled="exportingReport !== null"
-                                aria-label="Export lembur CSV"
-                                title="Export lembur CSV"
-                                @click="exportCsv('overtime')"
+                                aria-label="Ekspor lembur Excel"
+                                title="Ekspor lembur Excel"
+                                @click="exportExcel('overtime')"
                             >
                                 <svg v-if="exportingReport === 'overtime'" class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                     <path d="M12 3a9 9 0 1 1-8.2 5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
@@ -246,7 +252,7 @@ onBeforeUnmount(() => {
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.totalEmployees }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Record Presensi</p>
+                        <p class="text-xs text-gray-500">Data Presensi</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.attendanceRecords }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
@@ -258,7 +264,7 @@ onBeforeUnmount(() => {
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.lateAttendance }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Jam Lembur Approved</p>
+                        <p class="text-xs text-gray-500">Jam Lembur Disetujui</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.approvedHours }} jam</p>
                     </div>
                 </div>
@@ -304,8 +310,8 @@ onBeforeUnmount(() => {
                                     <tr>
                                         <th class="py-2 pe-4 font-medium">Karyawan</th>
                                         <th class="py-2 pe-4 font-medium">Total</th>
-                                        <th class="py-2 pe-4 font-medium">Pending</th>
-                                        <th class="py-2 pe-4 font-medium">Approved</th>
+                                        <th class="py-2 pe-4 font-medium">Menunggu</th>
+                                        <th class="py-2 pe-4 font-medium">Disetujui</th>
                                         <th class="py-2 pe-4 font-medium">Jam</th>
                                     </tr>
                                 </thead>
@@ -338,8 +344,8 @@ onBeforeUnmount(() => {
                                     <tr>
                                         <th class="py-2 pe-4 font-medium">Tanggal</th>
                                         <th class="py-2 pe-4 font-medium">Karyawan</th>
-                                        <th class="py-2 pe-4 font-medium">In</th>
-                                        <th class="py-2 pe-4 font-medium">Out</th>
+                                        <th class="py-2 pe-4 font-medium">Masuk</th>
+                                        <th class="py-2 pe-4 font-medium">Pulang</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 text-gray-700">
@@ -373,7 +379,7 @@ onBeforeUnmount(() => {
                                     <tr v-for="(row, index) in overtimeDetails" :key="index">
                                         <td class="py-3 pe-4">{{ formatDate(row.overtime_date) }}</td>
                                         <td class="py-3 pe-4">{{ row.employee_name }}</td>
-                                        <td class="py-3 pe-4">{{ row.approval_status }}</td>
+                                        <td class="py-3 pe-4">{{ statusLabel(row.approval_status) }}</td>
                                         <td class="py-3 pe-4">
                                             {{ formatTime(row.actual_start) }} - {{ formatTime(row.actual_end) }}
                                         </td>

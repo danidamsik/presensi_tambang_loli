@@ -1,8 +1,14 @@
 <template>
-    <div class="flex items-center space-x-3">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-extrabold text-slate-900 text-2xl shadow-lg shadow-amber-500/30">
-            TL
+    <div class="flex min-w-0 items-center gap-3">
+        <div class="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <img
+                src="/images/logo.jpeg"
+                alt="Logo PT. ABDARA BRM TAMBANG"
+                class="h-full w-full object-cover"
+            >
         </div>
-        <span class="text-3xl font-black bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tighter">TambangLoli</span>
+        <span class="min-w-0 break-words text-lg font-black leading-tight text-slate-900 dark:text-slate-100">
+            PT. ABDARA BRM TAMBANG
+        </span>
     </div>
 </template>

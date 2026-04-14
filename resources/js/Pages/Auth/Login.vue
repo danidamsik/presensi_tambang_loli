@@ -31,7 +31,7 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Log in" />
+        <Head title="Login" />
 
         <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
             {{ status }}
@@ -39,7 +39,7 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="id_number" value="NIK / ID Number" />
+                <InputLabel for="id_number" value="NIK / Nomor ID" />
 
                 <TextInput
                     id="id_number"
@@ -72,7 +72,7 @@ const submit = () => {
             <div class="block mt-4">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-slate-600">Remember me</span>
+                    <span class="ms-2 text-sm text-slate-600">Ingat saya</span>
                 </label>
             </div>
 
@@ -82,7 +82,7 @@ const submit = () => {
                     :href="route('password.request')"
                     class="underline text-sm text-slate-600 hover:text-amber-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
                 >
-                    Forgot your password?
+                    Lupa password?
                 </Link>
 
                 <PrimaryButton
@@ -96,7 +96,7 @@ const submit = () => {
                         class="me-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/80 border-r-transparent"
                         aria-hidden="true"
                     />
-                    {{ form.processing ? 'Memproses...' : 'Log in' }}
+                    {{ form.processing ? 'Memproses...' : 'Login' }}
                 </PrimaryButton>
             </div>
 

@@ -34,7 +34,7 @@ const summaryCards = computed(() => [
     {
         label: 'Total Karyawan',
         value: props.summary.totalEmployees,
-        hint: 'Akun employee aktif',
+        hint: 'Akun karyawan aktif',
         accent: 'from-slate-900 via-slate-800 to-slate-700 text-white',
     },
     {
@@ -46,7 +46,7 @@ const summaryCards = computed(() => [
     {
         label: 'Hasil Pencarian',
         value: totalFilteredEmployees.value,
-        hint: hasActiveFilter.value ? `Filter: "${search.value}"` : 'Semua data',
+        hint: hasActiveFilter.value ? `Penyaring: "${search.value}"` : 'Semua data',
         accent: 'from-amber-300 via-amber-200 to-orange-100 text-amber-950',
     },
 ]);
@@ -79,26 +79,34 @@ const resetFilter = () => {
     search.value = '';
 };
 
+const clearEmployeeForm = () => {
+    employeeForm.transform((data) => data);
+    employeeForm.id_number = '';
+    employeeForm.full_name = '';
+    employeeForm.email = '';
+    employeeForm.password = '';
+    employeeForm.password_confirmation = '';
+    employeeForm.clearErrors();
+};
+
 const openCreateModal = () => {
     editingEmployee.value = null;
-    employeeForm.reset();
-    employeeForm.clearErrors();
+    clearEmployeeForm();
     showEmployeeModal.value = true;
 };
 
 const closeEmployeeModal = () => {
     showEmployeeModal.value = false;
     editingEmployee.value = null;
-    employeeForm.reset();
-    employeeForm.clearErrors();
+    clearEmployeeForm();
 };
 
 const startEdit = (employee) => {
     editingEmployee.value = employee;
+    clearEmployeeForm();
     employeeForm.id_number = employee.id_number;
     employeeForm.full_name = employee.full_name;
     employeeForm.email = employee.email;
-    employeeForm.clearErrors();
     showEmployeeModal.value = true;
 };
 
@@ -233,7 +241,7 @@ onBeforeUnmount(() => {
                         class="mt-0 lg:flex-1"
                     />
                     <button type="button" class="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
-                        Reset
+                        Atur Ulang
                     </button>
                 </div>
 
@@ -271,7 +279,7 @@ onBeforeUnmount(() => {
                     <table class="min-w-full text-sm">
                         <thead class="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800 dark:text-slate-400">
                             <tr>
-                                <th class="py-3 pe-4 font-medium">ID Number</th>
+                                <th class="py-3 pe-4 font-medium">Nomor ID</th>
                                 <th class="py-3 pe-4 font-medium">Nama</th>
                                 <th class="py-3 pe-4 font-medium">Email</th>
                                 <th class="py-3 pe-4 font-medium">Dibuat</th>
@@ -340,7 +348,7 @@ onBeforeUnmount(() => {
 
                     <form class="mt-4 space-y-4" @submit.prevent="submitEmployee">
                         <div>
-                            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">ID Number</label>
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Nomor ID</label>
                             <input v-model="employeeForm.id_number" type="text" :class="inputClass(!!employeeForm.errors.id_number)" required />
                             <p v-if="employeeForm.errors.id_number" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ employeeForm.errors.id_number }}</p>
                         </div>

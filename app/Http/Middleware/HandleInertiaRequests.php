@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PublicFileUrl;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -29,10 +30,22 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'id_number' => $user->id_number,
+                    'full_name' => $user->full_name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'profile_photo' => $user->profile_photo,
+                    'profile_photo_url' => PublicFileUrl::make($user->profile_photo),
+                    'created_at' => $user->created_at,
+                    'email_verified_at' => $user->email_verified_at ?? null,
+                ] : null,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

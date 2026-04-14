@@ -49,6 +49,12 @@ const statusClass = (status) => {
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 };
 
+const statusLabel = (status) => ({
+    Pending: 'Menunggu',
+    Approved: 'Disetujui',
+    Rejected: 'Ditolak',
+}[status] ?? status);
+
 const formatDate = (value) => {
     if (!value) return '-';
 
@@ -179,7 +185,7 @@ const processOvertime = async (id, action) => {
 </script>
 
 <template>
-    <Head title="Monitoring & Approval Lembur" />
+    <Head title="Monitoring dan Persetujuan Lembur" />
 
     <AuthenticatedLayout>
         <div class="space-y-4">
@@ -189,19 +195,19 @@ const processOvertime = async (id, action) => {
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.totalRequests }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Pending</p>
+                        <p class="text-xs text-gray-500">Menunggu</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.pendingRequests }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Approved</p>
+                        <p class="text-xs text-gray-500">Disetujui</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.approvedRequests }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Rejected</p>
+                        <p class="text-xs text-gray-500">Ditolak</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.rejectedRequests }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Jam Approved</p>
+                        <p class="text-xs text-gray-500">Jam Disetujui</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.approvedHours }} jam</p>
                     </div>
                 </div>
@@ -220,9 +226,9 @@ const processOvertime = async (id, action) => {
                             <label class="block text-xs text-gray-500">Status</label>
                             <select v-model="form.status" class="mt-1 w-full rounded-md border-gray-300 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                                 <option value="all">Semua</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Rejected">Rejected</option>
+                                <option value="Pending">Menunggu</option>
+                                <option value="Approved">Disetujui</option>
+                                <option value="Rejected">Ditolak</option>
                             </select>
                         </div>
                         <div>
@@ -236,7 +242,7 @@ const processOvertime = async (id, action) => {
                         </div>
                         <div class="flex items-end">
                             <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
-                                Reset
+                                Atur Ulang
                             </button>
                         </div>
                     </div>
@@ -253,7 +259,7 @@ const processOvertime = async (id, action) => {
                                     <th class="py-2 pe-4 font-medium">Aktual</th>
                                     <th class="py-2 pe-4 font-medium">Foto</th>
                                     <th class="py-2 pe-4 font-medium">Status</th>
-                                    <th class="py-2 pe-4 font-medium">Approver</th>
+                                    <th class="py-2 pe-4 font-medium">Disetujui Oleh</th>
                                     <th class="py-2 pe-4 font-medium">Aksi</th>
                                 </tr>
                             </thead>
@@ -283,7 +289,7 @@ const processOvertime = async (id, action) => {
                                                 class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                                 @click="openPhotoModal(overtime, 'start')"
                                             >
-                                                Lihat Foto Start
+                                                Lihat Foto Mulai
                                             </button>
                                             <button
                                                 v-if="overtime.overtime_end_photo"
@@ -291,14 +297,14 @@ const processOvertime = async (id, action) => {
                                                 class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                                 @click="openPhotoModal(overtime, 'end')"
                                             >
-                                                Lihat Foto End
+                                                Lihat Foto Selesai
                                             </button>
                                             <span v-if="!overtime.overtime_request_photo && !overtime.overtime_start_photo && !overtime.overtime_end_photo" class="text-xs text-gray-500">-</span>
                                         </div>
                                     </td>
                                     <td class="py-3 pe-4">
                                         <span class="inline-flex rounded-full px-2 py-1 text-xs font-medium" :class="statusClass(overtime.approval_status)">
-                                            {{ overtime.approval_status }}
+                                            {{ statusLabel(overtime.approval_status) }}
                                         </span>
                                     </td>
                                     <td class="py-3 pe-4">{{ overtime.approved_by ?? '-' }}</td>
@@ -311,7 +317,7 @@ const processOvertime = async (id, action) => {
                                                 @click="processOvertime(overtime.id, 'approve')"
                                             >
                                                 <span v-if="actionLoadingId === overtime.id && actionLoadingType === 'approve'">...</span>
-                                                <span v-else>Approve</span>
+                                                <span v-else>Setujui</span>
                                             </button>
                                             <button
                                                 type="button"
@@ -320,7 +326,7 @@ const processOvertime = async (id, action) => {
                                                 @click="processOvertime(overtime.id, 'reject')"
                                             >
                                                 <span v-if="actionLoadingId === overtime.id && actionLoadingType === 'reject'">...</span>
-                                                <span v-else>Reject</span>
+                                                <span v-else>Tolak</span>
                                             </button>
                                         </div>
                                         <span v-else class="text-xs text-gray-500">Diproses</span>

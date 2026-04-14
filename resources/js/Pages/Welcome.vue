@@ -44,7 +44,7 @@ defineProps({
             </h1>
 
             <p class="mt-4 text-xl md:text-2xl text-slate-600 max-w-2xl mx-auto leading-relaxed mb-12 dark:text-slate-300">
-                Sistem cerdas pencatatan kehadiran dan lembur untuk ekosistem kerja Tambang Loli yang cepat, presisi, dan transparan.
+                Sistem cerdas pencatatan kehadiran dan lembur untuk ekosistem kerja PT. ABDARA BRM TAMBANG yang cepat, presisi, dan transparan.
             </p>
 
             <div v-if="canLogin" class="flex flex-col sm:flex-row justify-center gap-4">

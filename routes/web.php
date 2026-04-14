@@ -53,6 +53,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('admin.overtimes.reject');
 
     Route::get('/admin/leaves', [AdminLeaveRequestController::class, 'index'])->name('admin.leaves.index');
+    Route::get('/admin/leaves/{leaveRequest}/proof/download', [AdminLeaveRequestController::class, 'downloadProof'])
+        ->name('admin.leaves.proof.download');
     Route::patch('/admin/leaves/{leaveRequest}/approve', [AdminLeaveRequestController::class, 'approve'])
         ->name('admin.leaves.approve');
     Route::patch('/admin/leaves/{leaveRequest}/reject', [AdminLeaveRequestController::class, 'reject'])
@@ -63,12 +65,18 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
         ->name('admin.reports.attendance.csv');
     Route::get('/admin/reports/overtime.csv', [AdminReportController::class, 'overtimeCsv'])
         ->name('admin.reports.overtime.csv');
+    Route::get('/admin/reports/attendance.xls', [AdminReportController::class, 'attendanceExcel'])
+        ->name('admin.reports.attendance.excel');
+    Route::get('/admin/reports/overtime.xls', [AdminReportController::class, 'overtimeExcel'])
+        ->name('admin.reports.overtime.excel');
 });
 
 Route::middleware('auth')->group(function () {
     Route::get('/files/public', [PublicFileController::class, 'show'])->name('public-files.show');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
+    Route::delete('/profile/photo', [ProfileController::class, 'destroyPhoto'])->name('profile.photo.destroy');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 

@@ -81,7 +81,7 @@ const openPhotoModal = (attendance, type) => {
     }
 
     selectedPhotoSrc.value = src;
-    selectedPhotoTitle.value = type === 'in' ? 'Foto Clock In' : 'Foto Clock Out';
+    selectedPhotoTitle.value = type === 'in' ? 'Foto Absen Masuk' : 'Foto Absen Pulang';
     selectedPhotoMeta.value = `${attendance.employee_name} • ${formatDate(attendance.date)}`;
     showPhotoModal.value = true;
 };
@@ -120,15 +120,15 @@ onBeforeUnmount(() => {
         <div class="space-y-4">
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Total Record</p>
+                        <p class="text-xs text-gray-500">Total Data</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.totalRecords }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Clock In</p>
+                        <p class="text-xs text-gray-500">Absen Masuk</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.clockedIn }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
-                        <p class="text-xs text-gray-500">Clock Out</p>
+                        <p class="text-xs text-gray-500">Absen Pulang</p>
                         <p class="mt-1 text-xl font-semibold text-gray-900">{{ summary.clockedOut }}</p>
                     </div>
                     <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
                         </div>
                         <div class="flex items-end">
                             <button type="button" class="rounded-md border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" @click="resetFilter">
-                                Reset
+                                Atur Ulang
                             </button>
                         </div>
                     </div>
@@ -171,8 +171,8 @@ onBeforeUnmount(() => {
                                 <tr>
                                     <th class="py-2 pe-4 font-medium">Tanggal</th>
                                     <th class="py-2 pe-4 font-medium">Karyawan</th>
-                                    <th class="py-2 pe-4 font-medium">Clock In</th>
-                                    <th class="py-2 pe-4 font-medium">Clock Out</th>
+                                    <th class="py-2 pe-4 font-medium">Masuk</th>
+                                    <th class="py-2 pe-4 font-medium">Pulang</th>
                                     <th class="py-2 pe-4 font-medium">Lokasi</th>
                                     <th class="py-2 pe-4 font-medium">Foto</th>
                                 </tr>
@@ -187,8 +187,8 @@ onBeforeUnmount(() => {
                                     <td class="py-3 pe-4 whitespace-nowrap">{{ formatTime(attendance.clock_in_at) }}</td>
                                     <td class="py-3 pe-4 whitespace-nowrap">{{ formatTime(attendance.clock_out_at) }}</td>
                                     <td class="py-3 pe-4">
-                                        <p class="truncate max-w-[220px]" :title="attendance.clock_in_location ?? '-'">In: {{ attendance.clock_in_location ?? '-' }}</p>
-                                        <p class="truncate max-w-[220px]" :title="attendance.clock_out_location ?? '-'">Out: {{ attendance.clock_out_location ?? '-' }}</p>
+                                        <p class="truncate max-w-[220px]" :title="attendance.clock_in_location ?? '-'">Masuk: {{ attendance.clock_in_location ?? '-' }}</p>
+                                        <p class="truncate max-w-[220px]" :title="attendance.clock_out_location ?? '-'">Pulang: {{ attendance.clock_out_location ?? '-' }}</p>
                                     </td>
                                     <td class="py-3 pe-4">
                                         <div class="flex flex-col gap-2">
@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
                                                 class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                                 @click="openPhotoModal(attendance, 'in')"
                                             >
-                                                Lihat Foto In
+                                                Lihat Foto Masuk
                                             </button>
                                             <button
                                                 v-if="attendance.clock_out_photo"
@@ -206,7 +206,7 @@ onBeforeUnmount(() => {
                                                 class="inline-flex items-center justify-center rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                                 @click="openPhotoModal(attendance, 'out')"
                                             >
-                                                Lihat Foto Out
+                                                Lihat Foto Pulang
                                             </button>
                                             <span v-if="!attendance.clock_in_photo && !attendance.clock_out_photo" class="text-xs text-gray-500">-</span>
                                         </div>
