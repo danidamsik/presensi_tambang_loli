@@ -258,7 +258,7 @@ onBeforeUnmount(() => {
                                 :disabled="locationLoading"
                                 @click="ensureLocation().catch(() => {})"
                             >
-                                {{ locationLoading ? 'Mengambil GPS...' : currentPosition ? 'Refresh Lokasi' : 'Ambil Lokasi' }}
+                                {{ locationLoading ? 'Mengambil GPS...' : currentPosition ? 'Perbarui Lokasi' : 'Ambil Lokasi' }}
                             </button>
                         </div>
                     </div>
@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
                             <video ref="videoRef" autoplay muted playsinline class="aspect-[4/3] w-full object-cover" />
                             <div v-if="!cameraReady" class="absolute inset-0 grid place-items-center bg-slate-950/85 px-6 text-center text-sm text-slate-300">
                                 <div>
-                                    <p class="font-medium text-white">Preview kamera belum aktif</p>
+                                    <p class="font-medium text-white">Pratinjau kamera belum aktif</p>
                                 </div>
                             </div>
                         </div>
@@ -285,15 +285,15 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/60">
-                                <p class="text-slate-500 dark:text-slate-400">Snapshot Terakhir</p>
+                                <p class="text-slate-500 dark:text-slate-400">Foto Terakhir</p>
                                 <img
                                     v-if="capturedPhoto"
                                     :src="capturedPhoto"
-                                    alt="Snapshot presensi"
+                                    alt="Foto presensi"
                                     class="mt-3 aspect-[4/3] w-full rounded-lg object-cover"
                                 >
                                 <div v-else class="mt-3 grid aspect-[4/3] place-items-center rounded-lg border border-dashed border-slate-300 text-sm text-slate-400 dark:border-slate-700">
-                                    Belum ada snapshot
+                                Belum ada foto
                                 </div>
                                 <p class="mt-2 text-slate-500 dark:text-slate-400">Diambil: {{ captureTimestamp || '-' }}</p>
                             </div>
@@ -395,8 +395,8 @@ onBeforeUnmount(() => {
                                 <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(attendance.clock_in_at) }}</td>
                                 <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(attendance.clock_out_at) }}</td>
                                 <td class="py-3 pe-3">
-                                    <p class="max-w-[220px] truncate" :title="attendance.clock_in_location || '-'">In: {{ attendance.clock_in_location || '-' }}</p>
-                                    <p class="max-w-[220px] truncate" :title="attendance.clock_out_location || '-'">Out: {{ attendance.clock_out_location || '-' }}</p>
+                                    <p class="max-w-[220px] truncate" :title="attendance.clock_in_location || '-'">Masuk: {{ attendance.clock_in_location || '-' }}</p>
+                                    <p class="max-w-[220px] truncate" :title="attendance.clock_out_location || '-'">Pulang: {{ attendance.clock_out_location || '-' }}</p>
                                 </td>
                             </tr>
                             <tr v-if="!recentAttendances.length">

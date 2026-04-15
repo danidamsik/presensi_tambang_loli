@@ -240,6 +240,41 @@ class ReportController extends Controller
         ]);
     }
 
+    public function attendanceExcel(Request $request): StreamedResponse
+    {
+        [$dateFrom, $dateTo] = $this->resolveDateRange($request);
+        $employeeId = $request->filled('employee_id') ? (int) $request->input('employee_id') : null;
+
+        $rows = Attendance::query()
+            ->with('user:id,full_name,id_number')
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->whereHas('user', fn ($userQuery) => $userQuery->where('role', 'Employee'))
+            ->when($employeeId, fn ($query) => $query->where('user_id', $employeeId))
+            ->orderBy('date')
+            ->orderBy('user_id')
+            ->get()
+            ->values()
+            ->map(fn (Attendance $attendance, int $index): array => [
+                $index + 1,
+                $attendance->date,
+                $attendance->user?->id_number ?? '-',
+                $attendance->user?->full_name ?? '-',
+                $this->formatReportTime($attendance->clock_in_at),
+                $this->formatReportTime($attendance->clock_out_at),
+                $attendance->clock_in_location ?? '-',
+                $attendance->clock_out_location ?? '-',
+            ]);
+
+        return $this->downloadExcelTable(
+            sprintf('laporan-presensi-%s-sd-%s.xls', $dateFrom, $dateTo),
+            'Laporan Presensi',
+            $dateFrom,
+            $dateTo,
+            ['No', 'Tanggal', 'ID Number', 'Nama Karyawan', 'Absen Masuk', 'Absen Pulang', 'Lokasi Masuk', 'Lokasi Pulang'],
+            $rows,
+        );
+    }
+
     public function overtimeCsv(Request $request): StreamedResponse
     {
         [$dateFrom, $dateTo] = $this->resolveDateRange($request);
@@ -290,6 +325,45 @@ class ReportController extends Controller
         ]);
     }
 
+    public function overtimeExcel(Request $request): StreamedResponse
+    {
+        [$dateFrom, $dateTo] = $this->resolveDateRange($request);
+        $employeeId = $request->filled('employee_id') ? (int) $request->input('employee_id') : null;
+
+        $rows = Overtime::query()
+            ->with(['user:id,full_name,id_number', 'approver:id,full_name'])
+            ->whereBetween('overtime_date', [$dateFrom, $dateTo])
+            ->whereHas('user', fn ($userQuery) => $userQuery->where('role', 'Employee'))
+            ->when($employeeId, fn ($query) => $query->where('user_id', $employeeId))
+            ->orderBy('overtime_date')
+            ->orderBy('user_id')
+            ->get()
+            ->values()
+            ->map(fn (Overtime $overtime, int $index): array => [
+                $index + 1,
+                $overtime->overtime_date,
+                $overtime->user?->id_number ?? '-',
+                $overtime->user?->full_name ?? '-',
+                $this->formatReportTime($overtime->planned_start),
+                $this->formatReportTime($overtime->planned_end),
+                $this->formatReportTime($overtime->actual_start),
+                $this->formatReportTime($overtime->actual_end),
+                $this->formatOvertimeHours($overtime),
+                $overtime->approval_status,
+                $overtime->approver?->full_name ?? '-',
+                $overtime->reason ?? '-',
+            ]);
+
+        return $this->downloadExcelTable(
+            sprintf('laporan-lembur-%s-sd-%s.xls', $dateFrom, $dateTo),
+            'Laporan Lembur',
+            $dateFrom,
+            $dateTo,
+            ['No', 'Tanggal Lembur', 'ID Number', 'Nama Karyawan', 'Rencana Mulai', 'Rencana Selesai', 'Aktual Mulai', 'Aktual Selesai', 'Durasi Aktual (Jam)', 'Status', 'Disetujui Oleh', 'Alasan'],
+            $rows,
+        );
+    }
+
     /**
      * @return array{0:string,1:string}
      */
@@ -302,5 +376,83 @@ class ReportController extends Controller
         $dateTo = (string) $request->string('date_to', $defaultTo);
 
         return [$dateFrom, $dateTo];
+    }
+
+    /**
+     * @param  array<int, string>  $headers
+     * @param  Collection<int, array<int, mixed>>  $rows
+     */
+    private function downloadExcelTable(string $filename, string $title, string $dateFrom, string $dateTo, array $headers, Collection $rows): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($title, $dateFrom, $dateTo, $headers, $rows): void {
+            echo '<!doctype html>';
+            echo '<html>';
+            echo '<head>';
+            echo '<meta charset="UTF-8">';
+            echo '<style>';
+            echo 'body{font-family:Arial,sans-serif;font-size:12px;color:#111827;}';
+            echo 'h1{margin:0 0 4px 0;font-size:20px;}';
+            echo 'p{margin:0 0 14px 0;color:#4b5563;}';
+            echo 'table{border-collapse:collapse;width:100%;}';
+            echo 'th{background:#111827;color:#ffffff;font-weight:700;text-align:left;}';
+            echo 'th,td{border:1px solid #9ca3af;padding:8px;vertical-align:top;mso-number-format:"\@";}';
+            echo 'tr:nth-child(even) td{background:#f9fafb;}';
+            echo '</style>';
+            echo '</head>';
+            echo '<body>';
+            echo '<h1>'.e($title).'</h1>';
+            echo '<p>Periode: '.e($dateFrom).' s/d '.e($dateTo).'</p>';
+            echo '<table>';
+            echo '<thead><tr>';
+
+            foreach ($headers as $header) {
+                echo '<th>'.e($header).'</th>';
+            }
+
+            echo '</tr></thead>';
+            echo '<tbody>';
+
+            if ($rows->isEmpty()) {
+                echo '<tr><td colspan="'.count($headers).'" style="text-align:center;color:#6b7280;">Tidak ada data.</td></tr>';
+            }
+
+            foreach ($rows as $row) {
+                echo '<tr>';
+
+                foreach ($row as $cell) {
+                    echo '<td>'.e((string) $cell).'</td>';
+                }
+
+                echo '</tr>';
+            }
+
+            echo '</tbody>';
+            echo '</table>';
+            echo '</body>';
+            echo '</html>';
+        }, $filename, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+        ]);
+    }
+
+    private function formatReportTime(?string $value): string
+    {
+        return $value ? substr($value, 0, 5) : '-';
+    }
+
+    private function formatOvertimeHours(Overtime $overtime): string
+    {
+        if (! $overtime->actual_start || ! $overtime->actual_end) {
+            return '-';
+        }
+
+        $start = Carbon::createFromFormat('H:i:s', $overtime->actual_start);
+        $end = Carbon::createFromFormat('H:i:s', $overtime->actual_end);
+
+        if ($end->lessThan($start)) {
+            $end->addDay();
+        }
+
+        return number_format($start->diffInMinutes($end) / 60, 1, '.', '');
     }
 }

@@ -102,6 +102,8 @@ class EmployeeModuleTest extends TestCase
             'approval_status' => 'Approved',
         ]);
 
+        Carbon::setTestNow('2026-04-11 18:05:00');
+
         $startResponse = $this->actingAs($employee)->post(route('employee.overtimes.start', $approvedOvertime), [
             'latitude' => -6.20003,
             'longitude' => 106.81603,
@@ -112,6 +114,21 @@ class EmployeeModuleTest extends TestCase
         $approvedOvertime->refresh();
         $this->assertNotNull($approvedOvertime->actual_start);
         Storage::disk('public')->assertExists($approvedOvertime->overtime_start_photo);
+
+        Carbon::setTestNow('2026-04-11 19:00:00');
+
+        $earlyFinishResponse = $this->actingAs($employee)->from(route('employee.overtimes.index'))->post(route('employee.overtimes.finish', $approvedOvertime), [
+            'latitude' => -6.20004,
+            'longitude' => 106.81604,
+            'photo' => $this->fakePhotoDataUrl(),
+        ]);
+        $earlyFinishResponse->assertRedirect(route('employee.overtimes.index'));
+        $earlyFinishResponse->assertSessionHasErrors('overtime');
+
+        $approvedOvertime->refresh();
+        $this->assertNull($approvedOvertime->actual_end);
+
+        Carbon::setTestNow('2026-04-11 20:05:00');
 
         $finishResponse = $this->actingAs($employee)->post(route('employee.overtimes.finish', $approvedOvertime), [
             'latitude' => -6.20004,

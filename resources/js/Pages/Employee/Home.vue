@@ -58,7 +58,7 @@ const summaryCards = computed(() => [
         hint: officeReady.value ? 'Siap' : 'Belum diatur',
     },
     {
-        label: 'Lembur Approved',
+        label: 'Lembur Disetujui',
         value: String(props.approvedTodayOvertimes.length),
         hint: props.approvedTodayOvertimes.length
             ? `Sampai ${formatTime(nextApprovedOvertime.value?.planned_end)}`
@@ -77,33 +77,39 @@ const statusBadgeClass = (status) => {
 
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 };
+
+const statusLabel = (status) => ({
+    Pending: 'Menunggu',
+    Approved: 'Disetujui',
+    Rejected: 'Ditolak',
+}[status] ?? status);
 </script>
 
 <template>
-    <Head title="Home" />
+    <Head title="Beranda" />
 
     <AuthenticatedLayout>
-        <div class="space-y-4">
-            <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div class="min-w-0 space-y-4 overflow-hidden">
+            <section class="min-w-0 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                 <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Aktivitas</h2>
 
                 <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <article
                         v-for="card in summaryCards"
                         :key="card.label"
-                        class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
+                        class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
                     >
                         <p class="text-xs uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{{ card.label }}</p>
-                        <p class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
-                        <p v-if="card.hint" class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ card.hint }}</p>
+                        <p class="mt-2 break-words text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ card.value }}</p>
+                        <p v-if="card.hint" class="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">{{ card.hint }}</p>
                     </article>
                 </div>
             </section>
 
-            <section class="grid items-start gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-                <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <section class="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                <div class="min-w-0 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div>
+                        <div class="min-w-0">
                             <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Presensi Hari Ini</h3>
                         </div>
                         <Link
@@ -115,17 +121,17 @@ const statusBadgeClass = (status) => {
                     </div>
 
                     <div class="mt-3 grid gap-3 md:grid-cols-3">
-                        <div class="rounded-lg border border-slate-200 px-3 py-3 text-sm dark:border-slate-700">
+                        <div class="min-w-0 rounded-lg border border-slate-200 px-3 py-3 text-sm dark:border-slate-700">
                             <p class="text-slate-500 dark:text-slate-400">Masuk</p>
                             <p class="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ formatTime(todayAttendance?.clock_in_at) }}</p>
-                            <p class="mt-1 text-slate-500 dark:text-slate-400">{{ todayAttendance?.clock_in_location || 'Belum ada lokasi masuk' }}</p>
+                            <p class="mt-1 break-all text-slate-500 dark:text-slate-400">{{ todayAttendance?.clock_in_location || 'Belum ada lokasi masuk' }}</p>
                         </div>
-                        <div class="rounded-lg border border-slate-200 px-3 py-3 text-sm dark:border-slate-700">
+                        <div class="min-w-0 rounded-lg border border-slate-200 px-3 py-3 text-sm dark:border-slate-700">
                             <p class="text-slate-500 dark:text-slate-400">Pulang</p>
                             <p class="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ formatTime(todayAttendance?.clock_out_at) }}</p>
-                            <p class="mt-1 text-slate-500 dark:text-slate-400">{{ todayAttendance?.clock_out_location || 'Belum ada lokasi pulang' }}</p>
+                            <p class="mt-1 break-all text-slate-500 dark:text-slate-400">{{ todayAttendance?.clock_out_location || 'Belum ada lokasi pulang' }}</p>
                         </div>
-                        <div class="rounded-lg border border-slate-200 px-3 py-3 text-sm dark:border-slate-700">
+                        <div class="min-w-0 rounded-lg border border-slate-200 px-3 py-3 text-sm dark:border-slate-700">
                             <p class="text-slate-500 dark:text-slate-400">Validasi</p>
                             <p class="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-100">{{ officeReady ? 'Aktif' : 'Nonaktif' }}</p>
                             <p class="mt-1 text-slate-500 dark:text-slate-400">Radius {{ setting.radius_meters ?? 100 }} meter</p>
@@ -133,16 +139,16 @@ const statusBadgeClass = (status) => {
                     </div>
                 </div>
 
-                <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div class="min-w-0 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Ringkasan Lembur</h3>
                     <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                        <div class="rounded-lg bg-emerald-100 px-3 py-3 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                            <p>Approved Hari Ini</p>
+                        <div class="min-w-0 rounded-lg bg-emerald-100 px-3 py-3 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                            <p>Disetujui Hari Ini</p>
                             <p class="mt-1 text-2xl font-semibold">{{ approvedTodayOvertimes.length }}</p>
                         </div>
-                        <div class="rounded-lg bg-slate-100 px-3 py-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                        <div class="min-w-0 rounded-lg bg-slate-100 px-3 py-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                             <p>Jadwal Terdekat</p>
-                            <p class="mt-1 text-2xl font-semibold">
+                            <p class="mt-1 break-words text-2xl font-semibold">
                                 {{ nextApprovedOvertime ? `${formatTime(nextApprovedOvertime.planned_start)} - ${formatTime(nextApprovedOvertime.planned_end)}` : '--:--' }}
                             </p>
                         </div>
@@ -156,9 +162,9 @@ const statusBadgeClass = (status) => {
                 </div>
             </section>
 
-            <section class="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-                <section class="flex h-[28rem] min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                    <div class="flex items-center justify-between gap-3">
+            <section class="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+                <section class="flex min-h-0 min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:h-[28rem]">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
                         <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Presensi Terakhir</h2>
                         <Link
                             :href="route('employee.attendance.index')"
@@ -168,7 +174,27 @@ const statusBadgeClass = (status) => {
                         </Link>
                     </div>
 
-                    <div class="mt-3 min-h-0 flex-1 overflow-auto">
+                    <div class="mt-3 space-y-2 sm:hidden">
+                        <article
+                            v-for="attendance in recentAttendances"
+                            :key="attendance.id"
+                            class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/60"
+                        >
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <p class="font-semibold text-slate-900 dark:text-slate-100">{{ formatDate(attendance.date) }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    {{ formatTime(attendance.clock_in_at) }} - {{ formatTime(attendance.clock_out_at) }}
+                                </p>
+                            </div>
+                            <p class="mt-2 break-all text-slate-500 dark:text-slate-400">Masuk: {{ attendance.clock_in_location || '-' }}</p>
+                            <p class="mt-1 break-all text-slate-500 dark:text-slate-400">Pulang: {{ attendance.clock_out_location || '-' }}</p>
+                        </article>
+                        <div v-if="!recentAttendances.length" class="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                            Belum ada data presensi.
+                        </div>
+                    </div>
+
+                    <div class="mt-3 hidden min-h-0 flex-1 overflow-auto sm:block">
                         <table class="min-w-full text-sm">
                             <thead class="border-b border-slate-200 text-left text-slate-500 dark:border-slate-800 dark:text-slate-400">
                                 <tr>
@@ -184,8 +210,8 @@ const statusBadgeClass = (status) => {
                                     <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(attendance.clock_in_at) }}</td>
                                     <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(attendance.clock_out_at) }}</td>
                                     <td class="py-3 pe-3">
-                                        <p class="max-w-[220px] truncate" :title="attendance.clock_in_location || '-'">In: {{ attendance.clock_in_location || '-' }}</p>
-                                        <p class="max-w-[220px] truncate" :title="attendance.clock_out_location || '-'">Out: {{ attendance.clock_out_location || '-' }}</p>
+                                        <p class="max-w-[220px] truncate" :title="attendance.clock_in_location || '-'">Masuk: {{ attendance.clock_in_location || '-' }}</p>
+                                        <p class="max-w-[220px] truncate" :title="attendance.clock_out_location || '-'">Pulang: {{ attendance.clock_out_location || '-' }}</p>
                                     </td>
                                 </tr>
                                 <tr v-if="!recentAttendances.length">
@@ -196,8 +222,8 @@ const statusBadgeClass = (status) => {
                     </div>
                 </section>
 
-                <section class="flex h-[28rem] min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                    <div class="flex items-center justify-between gap-3">
+                <section class="flex min-h-0 min-w-0 flex-col rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:h-[28rem]">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
                         <h2 class="text-base font-semibold text-slate-900 dark:text-slate-100">Lembur Terbaru</h2>
                         <Link
                             :href="route('employee.overtimes.index')"
@@ -211,15 +237,15 @@ const statusBadgeClass = (status) => {
                         <article
                             v-for="overtime in recentOvertimes"
                             :key="overtime.id"
-                            class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
+                            class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60"
                         >
                             <div class="flex flex-wrap items-start justify-between gap-3">
-                                <div>
+                                <div class="min-w-0">
                                     <p class="font-semibold text-slate-900 dark:text-slate-100">{{ formatDate(overtime.overtime_date) }}</p>
-                                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ formatTime(overtime.planned_start) }} - {{ formatTime(overtime.planned_end) }}</p>
+                                    <p class="break-words text-sm text-slate-500 dark:text-slate-400">{{ formatTime(overtime.planned_start) }} - {{ formatTime(overtime.planned_end) }}</p>
                                 </div>
-                                <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold" :class="statusBadgeClass(overtime.approval_status)">
-                                    {{ overtime.approval_status }}
+                                <span class="inline-flex shrink-0 rounded-full px-2 py-1 text-xs font-semibold" :class="statusBadgeClass(overtime.approval_status)">
+                                    {{ statusLabel(overtime.approval_status) }}
                                 </span>
                             </div>
                         </article>

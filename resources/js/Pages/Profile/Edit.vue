@@ -2,6 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
+import UpdateProfilePhotoForm from './Partials/UpdateProfilePhotoForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -32,9 +33,9 @@ const formatDate = (value) => {
 
 const profileItems = computed(() => [
     { label: 'Nama Lengkap', value: user.value?.full_name ?? '-' },
-    { label: 'ID Number', value: user.value?.id_number ?? '-' },
+    { label: 'Nomor ID', value: user.value?.id_number ?? '-' },
     { label: 'Email', value: user.value?.email ?? '-' },
-    { label: 'Role', value: roleLabel.value },
+    { label: 'Peran', value: roleLabel.value },
     { label: 'Akun Dibuat', value: formatDate(user.value?.created_at) },
 ]);
 </script>
@@ -45,6 +46,10 @@ const profileItems = computed(() => [
     <AuthenticatedLayout>
         <div class="space-y-4">
             <template v-if="isEmployee">
+                <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+                    <UpdateProfilePhotoForm class="max-w-xl" />
+                </section>
+
                 <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Profil Karyawan</p>
                     <h3 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Informasi Diri</h3>
@@ -70,6 +75,10 @@ const profileItems = computed(() => [
             </template>
 
             <template v-else>
+                <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+                    <UpdateProfilePhotoForm class="max-w-xl" />
+                </div>
+
                 <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:p-8">
                     <UpdateProfileInformationForm
                         :must-verify-email="mustVerifyEmail"

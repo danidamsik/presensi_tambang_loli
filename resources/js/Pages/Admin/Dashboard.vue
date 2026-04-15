@@ -50,7 +50,7 @@ const summaryCards = computed(() => [
     {
         label: 'Total Karyawan',
         value: props.summary.totalEmployees,
-        hint: 'Akun aktif dengan role employee',
+        hint: 'Akun aktif dengan peran karyawan',
         accent: 'from-slate-900 via-slate-800 to-slate-700 text-white shadow-slate-900/20 dark:from-slate-100 dark:via-slate-200 dark:to-slate-300 dark:text-slate-950 dark:shadow-slate-500/10',
     },
     {
@@ -60,27 +60,27 @@ const summaryCards = computed(() => [
         accent: 'from-emerald-500 via-emerald-400 to-teal-300 text-emerald-950 shadow-emerald-500/25',
     },
     {
-        label: 'Lembur Pending',
+        label: 'Lembur Menunggu',
         value: props.summary.pendingOvertimes,
-        hint: 'Butuh approval agar operasional tidak tertunda',
+        hint: 'Butuh persetujuan agar operasional tidak tertunda',
         accent: 'from-amber-300 via-amber-200 to-orange-100 text-amber-950 shadow-amber-500/20',
     },
     {
         label: 'Jam Lembur Disetujui',
         value: `${props.summary.approvedOvertimeHoursThisMonth} jam`,
-        hint: 'Akumulasi lembur approved bulan berjalan',
+        hint: 'Akumulasi lembur disetujui bulan berjalan',
         accent: 'from-sky-500 via-cyan-400 to-teal-200 text-sky-950 shadow-sky-500/25',
     },
 ]);
 
 const attendanceMetrics = computed(() => [
     {
-        label: 'Clock In',
+        label: 'Absen Masuk',
         value: props.attendanceToday.clockedIn,
         hint: 'Sudah melakukan absensi masuk',
     },
     {
-        label: 'Clock Out',
+        label: 'Absen Pulang',
         value: props.attendanceToday.clockedOut,
         hint: 'Sudah menyelesaikan shift',
     },
@@ -93,12 +93,12 @@ const attendanceMetrics = computed(() => [
 
 const overtimeHighlights = computed(() => [
     {
-        label: 'Approved',
+        label: 'Disetujui',
         value: props.summary.approvedOvertimesThisMonth,
         tone: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
     },
     {
-        label: 'Rejected',
+        label: 'Ditolak',
         value: props.summary.rejectedOvertimesThisMonth,
         tone: 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
     },
@@ -142,6 +142,12 @@ const statusClass = (status) => {
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 };
 
+const statusLabel = (status) => ({
+    Pending: 'Menunggu',
+    Approved: 'Disetujui',
+    Rejected: 'Ditolak',
+}[status] ?? status);
+
 const openPhotoModal = (attendance, type) => {
     const src = type === 'in' ? attendance.clock_in_photo : attendance.clock_out_photo;
 
@@ -150,7 +156,7 @@ const openPhotoModal = (attendance, type) => {
     }
 
     selectedPhotoSrc.value = src;
-    selectedPhotoTitle.value = type === 'in' ? 'Foto Clock In' : 'Foto Clock Out';
+    selectedPhotoTitle.value = type === 'in' ? 'Foto Absen Masuk' : 'Foto Absen Pulang';
     selectedPhotoMeta.value = `${attendance.employee_name} • ${formatDate(attendance.date)}`;
     showPhotoModal.value = true;
 };
@@ -214,7 +220,7 @@ const processOvertime = async (id, action) => {
 </script>
 
 <template>
-    <Head title="Dashboard Admin" />
+    <Head title="Dasbor Admin" />
 
     <AuthenticatedLayout>
         <div class="space-y-4">
@@ -274,7 +280,7 @@ const processOvertime = async (id, action) => {
                         </div>
                     </div>
                     <div class="mt-3 rounded-lg bg-slate-100 px-3 py-3 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        Pending: <span class="font-semibold">{{ props.summary.pendingOvertimes }}</span>
+                        Menunggu: <span class="font-semibold">{{ props.summary.pendingOvertimes }}</span>
                     </div>
                 </div>
             </section>
@@ -297,8 +303,8 @@ const processOvertime = async (id, action) => {
                                 <tr>
                                     <th class="py-2 pe-3 font-medium">Tanggal</th>
                                     <th class="py-2 pe-3 font-medium">Karyawan</th>
-                                    <th class="py-2 pe-3 font-medium">Clock In</th>
-                                    <th class="py-2 pe-3 font-medium">Clock Out</th>
+                                    <th class="py-2 pe-3 font-medium">Masuk</th>
+                                    <th class="py-2 pe-3 font-medium">Pulang</th>
                                     <th class="py-2 pe-3 font-medium">Lokasi</th>
                                     <th class="py-2 pe-3 font-medium">Foto</th>
                                 </tr>
@@ -313,8 +319,8 @@ const processOvertime = async (id, action) => {
                                     <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(attendance.clock_in_at) }}</td>
                                     <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(attendance.clock_out_at) }}</td>
                                     <td class="py-3 pe-3">
-                                        <p class="max-w-[220px] truncate" :title="attendance.clock_in_location ?? '-'">In: {{ attendance.clock_in_location ?? '-' }}</p>
-                                        <p class="max-w-[220px] truncate" :title="attendance.clock_out_location ?? '-'">Out: {{ attendance.clock_out_location ?? '-' }}</p>
+                                        <p class="max-w-[220px] truncate" :title="attendance.clock_in_location ?? '-'">Masuk: {{ attendance.clock_in_location ?? '-' }}</p>
+                                        <p class="max-w-[220px] truncate" :title="attendance.clock_out_location ?? '-'">Pulang: {{ attendance.clock_out_location ?? '-' }}</p>
                                     </td>
                                     <td class="py-3 pe-3">
                                         <div class="flex flex-col gap-2">
@@ -324,7 +330,7 @@ const processOvertime = async (id, action) => {
                                                 class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                                 @click="openPhotoModal(attendance, 'in')"
                                             >
-                                                Foto In
+                                                Foto Masuk
                                             </button>
                                             <button
                                                 v-if="attendance.clock_out_photo"
@@ -332,7 +338,7 @@ const processOvertime = async (id, action) => {
                                                 class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                                 @click="openPhotoModal(attendance, 'out')"
                                             >
-                                                Foto Out
+                                                Foto Pulang
                                             </button>
                                             <span v-if="!attendance.clock_in_photo && !attendance.clock_out_photo" class="text-xs text-slate-500 dark:text-slate-400">-</span>
                                         </div>
@@ -348,7 +354,7 @@ const processOvertime = async (id, action) => {
 
                 <div class="flex h-[32rem] min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <div class="flex items-center justify-between gap-2">
-                        <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Lembur Pending</h3>
+                        <h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">Lembur Menunggu</h3>
                         <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
                             {{ pendingOvertimes.length }} antrean
                         </span>
@@ -390,7 +396,7 @@ const processOvertime = async (id, action) => {
                                     @click="processOvertime(overtime.id, 'approve')"
                                 >
                                     <span v-if="actionLoadingId === overtime.id && actionLoadingType === 'approve'">Memproses...</span>
-                                    <span v-else>Approve</span>
+                                    <span v-else>Setujui</span>
                                 </button>
                                 <button
                                     type="button"
@@ -399,14 +405,14 @@ const processOvertime = async (id, action) => {
                                     @click="processOvertime(overtime.id, 'reject')"
                                 >
                                     <span v-if="actionLoadingId === overtime.id && actionLoadingType === 'reject'">Memproses...</span>
-                                    <span v-else>Reject</span>
+                                    <span v-else>Tolak</span>
                                 </button>
                             </div>
                         </article>
                     </div>
 
                     <div v-else class="mt-3 flex min-h-0 flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                        Tidak ada pengajuan lembur yang menunggu approval.
+                        Tidak ada pengajuan lembur yang menunggu persetujuan.
                     </div>
                 </div>
             </section>
@@ -440,7 +446,7 @@ const processOvertime = async (id, action) => {
                                 <td class="py-3 pe-3 font-semibold text-slate-900 dark:text-slate-100">{{ overtime.employee_name }}</td>
                                 <td class="py-3 pe-3">
                                     <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold" :class="statusClass(overtime.approval_status)">
-                                        {{ overtime.approval_status }}
+                                        {{ statusLabel(overtime.approval_status) }}
                                     </span>
                                 </td>
                                 <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(overtime.planned_start) }} - {{ formatTime(overtime.planned_end) }}</td>

@@ -51,7 +51,7 @@ defineProps({
             />
         </svg>
         <span v-if="!compact" class="ms-2">
-            {{ isDark ? 'Light' : 'Dark' }}
+            {{ isDark ? 'Mode Terang' : 'Mode Gelap' }}
         </span>
     </button>
 </template>

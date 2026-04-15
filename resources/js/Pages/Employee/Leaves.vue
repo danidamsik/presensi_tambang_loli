@@ -34,12 +34,12 @@ const summaryCards = computed(() => [
         hint: 'Riwayat pengajuan Anda',
     },
     {
-        label: 'Pending',
+        label: 'Menunggu',
         value: props.leaveRequests.data.filter((leaveRequest) => leaveRequest.approval_status === 'Pending').length,
-        hint: 'Menunggu approval admin',
+        hint: 'Menunggu persetujuan admin',
     },
     {
-        label: 'Approved',
+        label: 'Disetujui',
         value: props.leaveRequests.data.filter((leaveRequest) => leaveRequest.approval_status === 'Approved').length,
         hint: 'Sudah disetujui',
     },
@@ -61,6 +61,12 @@ const statusBadgeClass = (status) => {
 
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
 };
+
+const statusLabel = (status) => ({
+    Pending: 'Menunggu',
+    Approved: 'Disetujui',
+    Rejected: 'Ditolak',
+}[status] ?? status);
 
 const formatDate = (value) => {
     if (!value) {
@@ -131,7 +137,7 @@ const openProofModal = (leaveRequest) => {
 
     selectedProofSrc.value = leaveRequest.proof_photo;
     selectedProofTitle.value = `Bukti ${leaveRequest.leave_type}`;
-    selectedProofMeta.value = `${formatDate(leaveRequest.leave_date)} - ${leaveRequest.approval_status}`;
+    selectedProofMeta.value = `${formatDate(leaveRequest.leave_date)} - ${statusLabel(leaveRequest.approval_status)}`;
     showProofModal.value = true;
 };
 
@@ -231,8 +237,8 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div v-if="proofPreviewUrl" class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-                            <p class="text-sm font-medium text-slate-700 dark:text-slate-200">Preview bukti</p>
-                            <img :src="proofPreviewUrl" alt="Preview bukti izin" class="mt-3 max-h-72 w-full rounded-lg object-contain">
+                            <p class="text-sm font-medium text-slate-700 dark:text-slate-200">Pratinjau bukti</p>
+                            <img :src="proofPreviewUrl" alt="Pratinjau bukti izin" class="mt-3 max-h-72 w-full rounded-lg object-contain">
                         </div>
 
                         <button
@@ -270,7 +276,7 @@ onBeforeUnmount(() => {
                                     </td>
                                     <td class="py-3 pe-3">
                                         <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusBadgeClass(leaveRequest.approval_status)">
-                                            {{ leaveRequest.approval_status }}
+                                            {{ statusLabel(leaveRequest.approval_status) }}
                                         </span>
                                     </td>
                                     <td class="py-3 pe-3">

@@ -3,7 +3,7 @@ import { usePresenceCapture } from '@/composables/usePresenceCapture';
 import { useGlobalNotify } from '@/composables/useGlobalNotify';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = defineProps({
     setting: { type: Object, required: true },
@@ -14,6 +14,34 @@ const props = defineProps({
 const notify = useGlobalNotify();
 const officeReady = computed(() => props.setting.is_configured);
 const nextApprovedOvertime = computed(() => props.approvedTodayOvertimes[0] ?? null);
+
+const getMakassarTime = () => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Makassar',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+    }).formatToParts(new Date());
+
+    const hour = parts.find((part) => part.type === 'hour')?.value;
+    const minute = parts.find((part) => part.type === 'minute')?.value;
+    const second = parts.find((part) => part.type === 'second')?.value;
+
+    return hour && minute && second ? `${hour}:${minute}:${second}` : '00:00:00';
+};
+
+const timeToMinutes = (value) => {
+    const [hour, minute, second = 0] = String(value ?? '').split(':').map(Number);
+
+    return Number.isFinite(hour) && Number.isFinite(minute) && Number.isFinite(second)
+        ? (hour * 60) + minute + (second / 60)
+        : null;
+};
+
+const currentMakassarTime = ref(getMakassarTime());
+const currentMakassarMinutes = computed(() => timeToMinutes(currentMakassarTime.value));
+let currentTimeIntervalId = null;
 
 const makassarTodayIso = () => {
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -88,7 +116,7 @@ const formatTime = (value) => {
 
 const summaryCards = computed(() => [
     {
-        label: 'Approved Hari Ini',
+        label: 'Disetujui Hari Ini',
         value: String(props.approvedTodayOvertimes.length),
         hint: '',
     },
@@ -121,6 +149,38 @@ const statusBadgeClass = (status) => {
     }
 
     return 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300';
+};
+
+const statusLabel = (status) => ({
+    Pending: 'Menunggu',
+    Approved: 'Disetujui',
+    Rejected: 'Ditolak',
+}[status] ?? status);
+
+const hasReachedOvertimeTime = (time) => {
+    const plannedMinutes = timeToMinutes(time);
+
+    return currentMakassarMinutes.value !== null
+        && plannedMinutes !== null
+        && currentMakassarMinutes.value >= plannedMinutes;
+};
+
+const canStartOvertime = (overtime) => !overtime.actual_start && hasReachedOvertimeTime(overtime.planned_start);
+
+const canFinishOvertime = (overtime) => Boolean(overtime.actual_start)
+    && !overtime.actual_end
+    && hasReachedOvertimeTime(overtime.planned_end);
+
+const overtimeAvailabilityHint = (overtime) => {
+    if (!overtime.actual_start && !hasReachedOvertimeTime(overtime.planned_start)) {
+        return `Absen mulai lembur dibuka mulai ${formatTime(overtime.planned_start)} WITA.`;
+    }
+
+    if (overtime.actual_start && !overtime.actual_end && !hasReachedOvertimeTime(overtime.planned_end)) {
+        return `Absen selesai lembur dibuka mulai ${formatTime(overtime.planned_end)} WITA.`;
+    }
+
+    return '';
 };
 
 const submitOvertimeRequest = async () => {
@@ -160,7 +220,17 @@ const handleFinishOvertime = (overtimeId) => submitPresence({
     routeParams: overtimeId,
 });
 
+onMounted(() => {
+    currentTimeIntervalId = window.setInterval(() => {
+        currentMakassarTime.value = getMakassarTime();
+    }, 1000);
+});
+
 onBeforeUnmount(() => {
+    if (currentTimeIntervalId) {
+        window.clearInterval(currentTimeIntervalId);
+    }
+
     stopCamera();
 });
 </script>
@@ -189,7 +259,7 @@ onBeforeUnmount(() => {
             <section class="grid gap-4 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
                 <section class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                     <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Pengajuan Lembur</p>
-                    <h2 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Buat request baru</h2>
+                    <h2 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Buat pengajuan baru</h2>
 
                     <form class="mt-4 space-y-4" @submit.prevent="submitOvertimeRequest">
                         <div>
@@ -229,7 +299,7 @@ onBeforeUnmount(() => {
                                 v-model="overtimeForm.reason"
                                 rows="4"
                                 class="mt-2 block w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-amber-400 focus:outline-none focus:ring-4 focus:ring-amber-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-amber-500/10"
-                                placeholder="Contoh: penyelesaian target harian, closing laporan, atau kebutuhan operasional lapangan."
+                                placeholder="Contoh: penyelesaian target harian, penutupan laporan, atau kebutuhan operasional lapangan."
                             ></textarea>
                             <p v-if="overtimeForm.errors.reason" class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ overtimeForm.errors.reason }}</p>
                         </div>
@@ -271,7 +341,7 @@ onBeforeUnmount(() => {
                                 :disabled="locationLoading"
                                 @click="ensureLocation().catch(() => {})"
                             >
-                                {{ locationLoading ? 'Mengambil GPS...' : currentPosition ? 'Refresh Lokasi' : 'Ambil Lokasi' }}
+                                {{ locationLoading ? 'Mengambil GPS...' : currentPosition ? 'Perbarui Lokasi' : 'Ambil Lokasi' }}
                             </button>
                         </div>
                     </div>
@@ -281,7 +351,7 @@ onBeforeUnmount(() => {
                             <video ref="videoRef" autoplay muted playsinline class="aspect-[4/3] w-full object-cover" />
                             <div v-if="!cameraReady" class="absolute inset-0 grid place-items-center bg-slate-950/85 px-6 text-center text-sm text-slate-300">
                                 <div>
-                                    <p class="font-medium text-white">Preview kamera belum aktif</p>
+                                    <p class="font-medium text-white">Pratinjau kamera belum aktif</p>
                                 </div>
                             </div>
                         </div>
@@ -298,15 +368,15 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800/60">
-                                <p class="text-slate-500 dark:text-slate-400">Snapshot Terakhir</p>
+                                <p class="text-slate-500 dark:text-slate-400">Foto Terakhir</p>
                                 <img
                                     v-if="capturedPhoto"
                                     :src="capturedPhoto"
-                                    alt="Snapshot presensi lembur"
+                                    alt="Foto presensi lembur"
                                     class="mt-3 aspect-[4/3] w-full rounded-lg object-cover"
                                 >
                                 <div v-else class="mt-3 grid aspect-[4/3] place-items-center rounded-lg border border-dashed border-slate-300 text-sm text-slate-400 dark:border-slate-700">
-                                    Belum ada snapshot
+                                    Belum ada foto
                                 </div>
                                 <p class="mt-2 text-slate-500 dark:text-slate-400">Diambil: {{ captureTimestamp || '-' }}</p>
                             </div>
@@ -331,7 +401,7 @@ onBeforeUnmount(() => {
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500">Presensi Lembur</p>
-                        <h2 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Request approved hari ini</h2>
+                        <h2 class="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">Pengajuan disetujui hari ini</h2>
                     </div>
                     <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
                         {{ approvedTodayOvertimes.length }} aktif
@@ -350,7 +420,7 @@ onBeforeUnmount(() => {
                                 <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ overtime.reason || '-' }}</p>
                             </div>
                             <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                                {{ overtime.approval_status }}
+                                {{ statusLabel(overtime.approval_status) }}
                             </span>
                         </div>
 
@@ -369,7 +439,7 @@ onBeforeUnmount(() => {
                             <button
                                 type="button"
                                 class="inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                :disabled="Boolean(overtime.actual_start) || activeAction === `overtime-finish-${overtime.id}` || !officeReady"
+                                :disabled="!canStartOvertime(overtime) || activeAction === `overtime-finish-${overtime.id}` || !officeReady"
                                 @click="handleStartOvertime(overtime.id)"
                             >
                                 {{ activeAction === `overtime-start-${overtime.id}` ? 'Memproses Mulai...' : 'Absen Mulai Lembur' }}
@@ -377,17 +447,21 @@ onBeforeUnmount(() => {
                             <button
                                 type="button"
                                 class="inline-flex items-center justify-center rounded-lg bg-rose-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                :disabled="!overtime.actual_start || Boolean(overtime.actual_end) || activeAction === `overtime-start-${overtime.id}` || !officeReady"
+                                :disabled="!canFinishOvertime(overtime) || activeAction === `overtime-start-${overtime.id}` || !officeReady"
                                 @click="handleFinishOvertime(overtime.id)"
                             >
                                 {{ activeAction === `overtime-finish-${overtime.id}` ? 'Memproses Selesai...' : 'Absen Selesai Lembur' }}
                             </button>
                         </div>
+
+                        <p v-if="overtimeAvailabilityHint(overtime)" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                            {{ overtimeAvailabilityHint(overtime) }}
+                        </p>
                     </article>
                 </div>
 
                 <div v-else class="mt-4 rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    Belum ada lembur approved untuk hari ini.
+                    Belum ada lembur yang disetujui untuk hari ini.
                 </div>
             </section>
 
@@ -410,7 +484,7 @@ onBeforeUnmount(() => {
                                 <td class="py-3 pe-3 whitespace-nowrap">{{ formatTime(overtime.actual_start) }} - {{ formatTime(overtime.actual_end) }}</td>
                                 <td class="py-3 pe-3">
                                     <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="statusBadgeClass(overtime.approval_status)">
-                                        {{ overtime.approval_status }}
+                                        {{ statusLabel(overtime.approval_status) }}
                                     </span>
                                 </td>
                             </tr>

@@ -9,8 +9,11 @@ use App\Support\PublicFileUrl;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeaveRequestController extends Controller
 {
@@ -73,6 +76,7 @@ class LeaveRequestController extends Controller
                 'id_number' => $leaveRequest->user?->id_number,
                 'reason' => $leaveRequest->reason,
                 'proof_photo' => PublicFileUrl::make($leaveRequest->proof_photo),
+                'proof_photo_download_url' => route('admin.leaves.proof.download', $leaveRequest, false),
                 'approval_status' => $leaveRequest->approval_status,
                 'approved_by' => $leaveRequest->approver?->full_name,
                 'created_at' => optional($leaveRequest->created_at)->toDateTimeString(),
@@ -106,5 +110,18 @@ class LeaveRequestController extends Controller
         ]);
 
         return back()->with('success', 'Pengajuan izin berhasil ditolak.');
+    }
+
+    public function downloadProof(LeaveRequest $leaveRequest): StreamedResponse
+    {
+        abort_unless($leaveRequest->user?->role === 'Employee', 404);
+        abort_if(blank($leaveRequest->proof_photo), 404);
+        abort_unless(Storage::disk('public')->exists($leaveRequest->proof_photo), 404);
+
+        $extension = pathinfo($leaveRequest->proof_photo, PATHINFO_EXTENSION) ?: 'jpg';
+        $employeeName = Str::slug($leaveRequest->user?->full_name ?? 'karyawan');
+        $filename = sprintf('bukti-izin-%s-%s.%s', $employeeName, $leaveRequest->leave_date, $extension);
+
+        return Storage::disk('public')->download($leaveRequest->proof_photo, $filename);
     }
 }

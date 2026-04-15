@@ -193,6 +193,7 @@ class HomeController extends Controller
             ]);
         }
 
+        $this->assertOvertimeTimeReached($overtime, 'planned_start', 'mulai');
         $this->assertWithinOfficeRadius($payload['latitude'], $payload['longitude'], $setting);
 
         $overtime->update([
@@ -235,6 +236,7 @@ class HomeController extends Controller
             ]);
         }
 
+        $this->assertOvertimeTimeReached($overtime, 'planned_end', 'selesai');
         $this->assertWithinOfficeRadius($payload['latitude'], $payload['longitude'], $setting);
 
         $overtime->update([
@@ -439,6 +441,25 @@ class HomeController extends Controller
         if ($now->lt($checkOutAt)) {
             throw ValidationException::withMessages([
                 'attendance' => 'Absen pulang baru bisa dilakukan mulai pukul '.$checkOutAt->format('H:i').' WITA.',
+            ]);
+        }
+    }
+
+    private function assertOvertimeTimeReached(Overtime $overtime, string $field, string $label): void
+    {
+        $plannedTime = $overtime->{$field};
+
+        if (blank($plannedTime)) {
+            throw ValidationException::withMessages([
+                'overtime' => 'Jam '.$label.' lembur belum tersedia pada pengajuan ini.',
+            ]);
+        }
+
+        $scheduledAt = Carbon::parse($overtime->overtime_date.' '.$plannedTime);
+
+        if (now()->lt($scheduledAt)) {
+            throw ValidationException::withMessages([
+                'overtime' => 'Absen '.$label.' lembur baru bisa dilakukan mulai pukul '.$scheduledAt->format('H:i').' WITA sesuai jam yang diajukan.',
             ]);
         }
     }
